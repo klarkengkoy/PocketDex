@@ -7,14 +7,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.samidevstudio.pocketdex.data.DefaultPokemonRepository
 import com.samidevstudio.pocketdex.data.PokemonRepository
-import com.samidevstudio.pocketdex.data.RetrofitClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
 /**
  * ViewModel that manages the state for both the list and detail screens.
- * Uses the Repository pattern to fetch data.
+ * Uses the Repository pattern to fetch and cache data.
  */
 class PokemonViewModel(
     private val repository: PokemonRepository = DefaultPokemonRepository()
@@ -34,6 +33,7 @@ class PokemonViewModel(
 
     init {
         viewModelScope.launch {
+            // Initial load of two batches to fill the screen
             fetchNamesBatch()
             fetchNamesBatch()
             backfillTypes()
@@ -41,9 +41,19 @@ class PokemonViewModel(
     }
 
     /**
-     * Fetches detailed information for a single Pokémon using the repository.
+     * Fetches detailed information for a single Pokémon.
+     * Optimized to use cached data instantly if available.
      */
     fun loadPokemonDetail(id: String) {
+        // Step 1: Check synchronous cache first
+        val cached = repository.getCachedPokemonDetail(id)
+        if (cached != null) {
+            // Resolve instantly if cached - no loading state needed!
+            detailUiState = PokemonDetailUiState.Success(cached)
+            return
+        }
+
+        // Step 2: Fallback to asynchronous fetch if not in cache
         viewModelScope.launch {
             detailUiState = PokemonDetailUiState.Loading
             try {
@@ -81,7 +91,7 @@ class PokemonViewModel(
 
     /**
      * Backfills Pokémon types for the list screen.
-     * Keeps the list snappy by showing basic info first.
+     * Enriches the local cache so navigation becomes instant.
      */
     private suspend fun backfillTypes() {
         val itemsToUpdate = allPokemon.mapIndexedNotNull { index, model ->
@@ -91,6 +101,7 @@ class PokemonViewModel(
             val jobs = batchIndices.map { index ->
                 viewModelScope.async {
                     try {
+                        // This fills the Repository cache as a side effect
                         val detail = repository.getPokemonDetail(allPokemon[index].id)
                         index to detail.types
                     } catch (e: Exception) {

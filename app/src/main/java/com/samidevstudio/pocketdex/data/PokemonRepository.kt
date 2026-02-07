@@ -11,6 +11,11 @@ import com.samidevstudio.pocketdex.ui.StatInfo
 interface PokemonRepository {
     suspend fun getPokemonList(offset: Int, limit: Int = 20): List<PokemonUiModel>
     suspend fun getPokemonDetail(id: String): PokemonDetailModel
+    
+    /**
+     * Checks if a Pokémon is already in the local cache.
+     */
+    fun getCachedPokemonDetail(id: String): PokemonDetailModel?
 }
 
 /**
@@ -50,6 +55,10 @@ class DefaultPokemonRepository(private val apiService: PokeApiService = Retrofit
         // Step 3: Save to cache and return
         detailCache[id] = detailModel
         return detailModel
+    }
+
+    override fun getCachedPokemonDetail(id: String): PokemonDetailModel? {
+        return detailCache[id]
     }
 
     /**

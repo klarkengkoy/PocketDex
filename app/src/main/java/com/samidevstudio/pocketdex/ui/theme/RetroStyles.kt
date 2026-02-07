@@ -4,10 +4,16 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 
 /**
@@ -20,11 +26,81 @@ object RetroStyles {
     
     val CanvasColor1 = Color.White
     val CanvasColor2 = Color(0xFFEEEEEE)
+
+    /**
+     * A custom shape for the BottomAppBar that creates a "Cradle" cutout
+     * for the central Pokeball.
+     */
+    val CradleShape: Shape = CradleShapeImpl(
+        cutoutRadius = 64.dp, // Increased from 54dp to create more negative space
+        cornerRadius = 15.dp  
+    )
+}
+
+/**
+ * Custom implementation of a Shape with a top-center semi-circle cutout
+ * and rounded top corners.
+ */
+private class CradleShapeImpl(
+    private val cutoutRadius: Dp,
+    private val cornerRadius: Dp
+) : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        val radiusPx = with(density) { cutoutRadius.toPx() }
+        val cornerPx = with(density) { cornerRadius.toPx() }
+        val cutoutWidth = radiusPx * 2
+        
+        val path = Path().apply {
+            // Start at the bottom left
+            moveTo(0f, size.height)
+            // Draw up left side to start of corner
+            lineTo(0f, cornerPx)
+            // Top-left corner
+            arcTo(
+                rect = Rect(0f, 0f, cornerPx * 2, cornerPx * 2),
+                startAngleDegrees = 180f,
+                sweepAngleDegrees = 90f,
+                forceMoveTo = false
+            )
+            // Line to the start of the cradle bowl
+            lineTo((size.width - cutoutWidth) / 2, 0f)
+            // The Cradle (cutout semi-circle)
+            arcTo(
+                rect = Rect(
+                    left = (size.width - cutoutWidth) / 2,
+                    top = -radiusPx,
+                    right = (size.width + cutoutWidth) / 2,
+                    bottom = radiusPx
+                ),
+                startAngleDegrees = 180f,
+                sweepAngleDegrees = -180f,
+                forceMoveTo = false
+            )
+            // Line to the start of the top-right corner
+            lineTo(size.width - cornerPx, 0f)
+            // Top-right corner
+            arcTo(
+                rect = Rect(size.width - cornerPx * 2, 0f, size.width, cornerPx * 2),
+                startAngleDegrees = 270f,
+                sweepAngleDegrees = 90f,
+                forceMoveTo = false
+            )
+            // Line down the right side
+            lineTo(size.width, size.height)
+            // Back to the start at bottom left
+            lineTo(0f, size.height)
+            close()
+        }
+        return Outline.Generic(path)
+    }
 }
 
 /**
  * A custom modifier that draws a retro checkered "canvas" background.
- * Moved here for centralized project-wide styling.
  */
 fun Modifier.retroBackground(
     gridSize: Dp = RetroStyles.GridSize,
