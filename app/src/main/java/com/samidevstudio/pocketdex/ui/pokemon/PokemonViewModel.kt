@@ -7,9 +7,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.samidevstudio.pocketdex.data.DefaultPokemonRepository
 import com.samidevstudio.pocketdex.data.PokemonRepository
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
+
+private const val PAGE_SIZE = 60
 
 /**
  * ViewModel that manages the state for both the list and detail screens.
@@ -22,6 +24,9 @@ class PokemonViewModel(
     private var currentOffset = 0
     private var isFetching = false
 
+    // Tracks in-progress detail fetches to prevent redundant network calls
+    private val activeDetailJobs = mutableMapOf<String, Deferred<PokemonDetailModel?>>()
+
     var listUiState: PokemonListUiState by mutableStateOf(PokemonListUiState.Loading)
         private set
 
@@ -31,11 +36,14 @@ class PokemonViewModel(
     init {
         viewModelScope.launch {
             fetchNamesBatch()
-            fetchNamesBatch()
             backfillTypes()
         }
     }
 
+    /**
+     * Loads detail for a specific Pokémon. 
+     * Uses the cache first, then checks for any active backfilling jobs before firing a new request.
+     */
     fun loadPokemonDetail(id: String) {
         val cached = repository.getCachedPokemonDetail(id)
         if (cached != null) {
@@ -45,11 +53,12 @@ class PokemonViewModel(
 
         viewModelScope.launch {
             detailUiState = PokemonDetailUiState.Loading
-            try {
-                val detailModel = repository.getPokemonDetail(id)
-                detailUiState = PokemonDetailUiState.Success(detailModel)
+            detailUiState = try {
+                // If a backfill job is already fetching this ID, wait for it instead of starting a new one
+                val detailModel = activeDetailJobs[id]?.await() ?: repository.getPokemonDetail(id)
+                PokemonDetailUiState.Success(detailModel)
             } catch (e: Exception) {
-                detailUiState = PokemonDetailUiState.Error(e.message ?: "Failed to load details")
+                PokemonDetailUiState.Error(e.message ?: "Failed to load details")
             }
         }
     }
@@ -65,10 +74,10 @@ class PokemonViewModel(
         if (isFetching) return
         isFetching = true
         try {
-            val newItems = repository.getPokemonList(offset = currentOffset)
+            val newItems = repository.getPokemonList(offset = currentOffset, limit = PAGE_SIZE)
             allPokemon.addAll(newItems)
             listUiState = PokemonListUiState.Success(allPokemon.toList())
-            currentOffset += 20
+            currentOffset += PAGE_SIZE
         } catch (e: Exception) {
             if (allPokemon.isEmpty()) {
                 listUiState = PokemonListUiState.Error(e.message ?: "Network error")
@@ -82,18 +91,29 @@ class PokemonViewModel(
         val itemsToUpdate = allPokemon.mapIndexedNotNull { index, model ->
             if (model.types.isEmpty()) index else null
         }
+        
         itemsToUpdate.chunked(20).forEach { batchIndices ->
             val jobs = batchIndices.map { index ->
-                viewModelScope.async {
+                val id = allPokemon[index].id
+                val deferred = viewModelScope.async {
                     try {
-                        val detail = repository.getPokemonDetail(allPokemon[index].id)
-                        index to detail.types
-                    } catch (e: Exception) {
+                        repository.getPokemonDetail(id)
+                    } catch (_: Exception) {
                         null
                     }
                 }
+                // Store the job so loadPokemonDetail() can "hitch a ride" on it
+                activeDetailJobs[id] = deferred
+                index to deferred
             }
-            val results = jobs.awaitAll().filterNotNull()
+
+            val results = jobs.map { (index, deferred) ->
+                val detail = deferred.await()
+                // Clean up job map once done
+                activeDetailJobs.remove(allPokemon[index].id)
+                index to (detail?.types ?: emptyList())
+            }
+
             results.forEach { (index, types) ->
                 allPokemon[index] = allPokemon[index].copy(types = types)
             }
