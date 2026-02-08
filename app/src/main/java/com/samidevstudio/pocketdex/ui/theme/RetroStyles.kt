@@ -1,6 +1,8 @@
 package com.samidevstudio.pocketdex.ui.theme
 
 import androidx.compose.foundation.border
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -24,6 +26,7 @@ object RetroStyles {
     val BorderColor = Color.Black
     val GridSize = 20.dp
     
+    // Default colors for light mode
     val CanvasColor1 = Color.White
     val CanvasColor2 = Color(0xFFEEEEEE)
 
@@ -32,7 +35,7 @@ object RetroStyles {
      * for the central Pokeball.
      */
     val CradleShape: Shape = CradleShapeImpl(
-        cutoutRadius = 64.dp, // Increased from 54dp to create more negative space
+        cutoutRadius = 64.dp,
         cornerRadius = 15.dp  
     )
 }
@@ -55,20 +58,15 @@ private class CradleShapeImpl(
         val cutoutWidth = radiusPx * 2
         
         val path = Path().apply {
-            // Start at the bottom left
             moveTo(0f, size.height)
-            // Draw up left side to start of corner
             lineTo(0f, cornerPx)
-            // Top-left corner
             arcTo(
                 rect = Rect(0f, 0f, cornerPx * 2, cornerPx * 2),
                 startAngleDegrees = 180f,
                 sweepAngleDegrees = 90f,
                 forceMoveTo = false
             )
-            // Line to the start of the cradle bowl
             lineTo((size.width - cutoutWidth) / 2, 0f)
-            // The Cradle (cutout semi-circle)
             arcTo(
                 rect = Rect(
                     left = (size.width - cutoutWidth) / 2,
@@ -80,18 +78,14 @@ private class CradleShapeImpl(
                 sweepAngleDegrees = -180f,
                 forceMoveTo = false
             )
-            // Line to the start of the top-right corner
             lineTo(size.width - cornerPx, 0f)
-            // Top-right corner
             arcTo(
                 rect = Rect(size.width - cornerPx * 2, 0f, size.width, cornerPx * 2),
                 startAngleDegrees = 270f,
                 sweepAngleDegrees = 90f,
                 forceMoveTo = false
             )
-            // Line down the right side
             lineTo(size.width, size.height)
-            // Back to the start at bottom left
             lineTo(0f, size.height)
             close()
         }
@@ -101,11 +95,12 @@ private class CradleShapeImpl(
 
 /**
  * A custom modifier that draws a retro checkered "canvas" background.
+ * Now supports dynamic theming by accepting colors.
  */
 fun Modifier.retroBackground(
     gridSize: Dp = RetroStyles.GridSize,
-    color1: Color = RetroStyles.CanvasColor1,
-    color2: Color = RetroStyles.CanvasColor2
+    color1: Color,
+    color2: Color
 ): Modifier = this.drawBehind {
     val sizePx = gridSize.toPx()
     val columns = (size.width / sizePx).toInt() + 1

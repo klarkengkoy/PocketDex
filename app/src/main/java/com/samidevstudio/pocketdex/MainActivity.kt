@@ -25,21 +25,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.samidevstudio.pocketdex.ui.components.PokeballCanvas
 import com.samidevstudio.pocketdex.ui.navigation.MainNavigation
 import com.samidevstudio.pocketdex.ui.navigation.PokedexRoute
 import com.samidevstudio.pocketdex.ui.theme.PocketDexTheme
 import com.samidevstudio.pocketdex.ui.theme.RetroStyles
+import com.samidevstudio.pocketdex.ui.options.OptionsViewModel
 
 /**
  * MainActivity serves as the entry point.
@@ -52,19 +51,18 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            var isDarkTheme by remember { mutableStateOf(false) }
+            // OptionsViewModel now found in .ui.options
+            val optionsViewModel: OptionsViewModel = viewModel()
             val backStack = remember { mutableStateListOf<Any>(PokedexRoute.List) }
             val currentRoute = backStack.lastOrNull()
 
-            PocketDexTheme(darkTheme = isDarkTheme) {
-                // The root Surface ensures the theme background covers the whole screen
+            PocketDexTheme(darkTheme = optionsViewModel.isDarkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color.Transparent
                 ) {
                     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
                     Scaffold(
-                        // Set Scaffold to transparent so content behind the bar is visible
                         containerColor = Color.Transparent,
                         bottomBar = {
                             Surface(
@@ -96,7 +94,6 @@ class MainActivity : ComponentActivity() {
                                         }
                                     )
                                     
-                                    // Empty space for the Pokeball Hub
                                     Box(modifier = Modifier.size(100.dp))
 
                                     NavTabItem(
@@ -134,11 +131,10 @@ class MainActivity : ComponentActivity() {
                         },
                         floatingActionButtonPosition = FabPosition.Center
                     ) { _ ->
-                        // Using '_' silences the "unused parameter" warning.
-                        // We intentionally ignore scaffold padding to allow content to bleed behind the bars.
                         Box(modifier = Modifier.fillMaxSize()) {
                             MainNavigation(
                                 backStack = backStack,
+                                optionsViewModel = optionsViewModel,
                                 onBack = {
                                     if (backStack.size > 1) {
                                         backStack.removeAt(backStack.lastIndex)

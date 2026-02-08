@@ -1,4 +1,4 @@
-package com.samidevstudio.pocketdex.ui
+package com.samidevstudio.pocketdex.ui.pokemon
 
 /**
  * A lean model for the Pokémon grid. Contains just enough info for the list item.

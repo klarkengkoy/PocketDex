@@ -1,8 +1,8 @@
 package com.samidevstudio.pocketdex.data
 
-import com.samidevstudio.pocketdex.ui.PokemonDetailModel
-import com.samidevstudio.pocketdex.ui.PokemonUiModel
-import com.samidevstudio.pocketdex.ui.StatInfo
+import com.samidevstudio.pocketdex.ui.pokemon.PokemonDetailModel
+import com.samidevstudio.pocketdex.ui.pokemon.PokemonUiModel
+import com.samidevstudio.pocketdex.ui.pokemon.StatInfo
 
 /**
  * Interface defining the operations for fetching Pokémon data.

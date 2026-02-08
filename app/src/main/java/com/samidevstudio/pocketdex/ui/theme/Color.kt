@@ -19,28 +19,28 @@ val DarkBackground = Color(0xFF121212)
 val DarkSurface = Color(0xFF1E1E1E)
 
 /**
- * Official colors for each Pokémon type.
- * Used for the type badges on the cards.
+ * Official dual-tone colors for each Pokémon type.
+ * Each entry is a pair representing the top and bottom colors of the badge.
  */
 object PokemonTypeColors {
     val map = mapOf(
-        "grass" to Color(0xFF9BCC50),
-        "fire" to Color(0xFFFD7D24),
-        "water" to Color(0xFF4592C4),
-        "bug" to Color(0xFF729F3F),
-        "normal" to Color(0xFFA4ACAF),
-        "poison" to Color(0xFFB97FC9),
-        "electric" to Color(0xFFEED535),
-        "ground" to Color(0xFFAB9842),
-        "fairy" to Color(0xFFFDB9E9),
-        "fighting" to Color(0xFFD56723),
-        "psychic" to Color(0xFFF366B9),
-        "rock" to Color(0xFFA38C21),
-        "ghost" to Color(0xFF7B62A3),
-        "ice" to Color(0xFF51C4E7),
-        "dragon" to Color(0xFFF16E57),
-        "dark" to Color(0xFF707070),
-        "steel" to Color(0xFF9EB7B8),
-        "flying" to Color(0xFF3DC7EF)
+        "grass" to (Color(0xFF9BCC50) to Color(0xFF9BCC50)),
+        "fire" to (Color(0xFFFD7D24) to Color(0xFFFD7D24)),
+        "water" to (Color(0xFF4592C4) to Color(0xFF4592C4)),
+        "bug" to (Color(0xFF729F3F) to Color(0xFF729F3F)),
+        "normal" to (Color(0xFFA4ACAF) to Color(0xFFA4ACAF)),
+        "poison" to (Color(0xFFB97FC9) to Color(0xFFB97FC9)),
+        "electric" to (Color(0xFFEED535) to Color(0xFFEED535)),
+        "ground" to (Color(0xFFF7DE3F) to Color(0xFFAB9842)), // Official Ground split
+        "fairy" to (Color(0xFFFDB9E9) to Color(0xFFFDB9E9)),
+        "fighting" to (Color(0xFFD56723) to Color(0xFFD56723)),
+        "psychic" to (Color(0xFFF366B9) to Color(0xFFF366B9)),
+        "rock" to (Color(0xFFA38C21) to Color(0xFFA38C21)),
+        "ghost" to (Color(0xFF7B62A3) to Color(0xFF7B62A3)),
+        "ice" to (Color(0xFF51C4E7) to Color(0xFF51C4E7)),
+        "dragon" to (Color(0xFF53A4CF) to Color(0xFFF16E57)), // Official Dragon split
+        "dark" to (Color(0xFF707070) to Color(0xFF707070)),
+        "steel" to (Color(0xFF9EB7B8) to Color(0xFF9EB7B8)),
+        "flying" to (Color(0xFF3DC7EF) to Color(0xFFBDB9B8))  // Official Flying split
     )
 }
