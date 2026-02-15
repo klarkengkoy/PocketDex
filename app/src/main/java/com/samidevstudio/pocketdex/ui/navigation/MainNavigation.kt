@@ -1,5 +1,6 @@
 package com.samidevstudio.pocketdex.ui.navigation
 
+import android.os.Parcelable
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -17,9 +18,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
@@ -32,6 +34,7 @@ import com.samidevstudio.pocketdex.ui.pokemon.PokemonViewModel
 import kotlinx.serialization.Serializable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.parcelize.Parcelize
 
 /**
  * Pokedex Animation Standards.
@@ -41,20 +44,20 @@ const val POKEDEX_ANIM_MS = 2000
 // Used for screen slides - starts fast, settles smoothly
 val PokedexSettlingCurve = CubicBezierEasing(0.18f, 0.82f, 0.23f, 1.0f)
 
-// Used for Pokemon sprites - smooth flight without overshoot
+// Used for Pokémon sprites - smooth flight without overshoot
 val SpriteFlightCurve = CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f)
 
 /**
- * Creates a flight path for Pokemon sprites.
+ * Creates a flight path for Pokémon sprites.
  * Automatically chooses an Arc direction based on the starting position.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
-fun pokemonSpriteTransform(duration: Int = POKEDEX_ANIM_MS): BoundsTransform = 
+fun pokemonSpriteTransform(duration: Int = POKEDEX_ANIM_MS): BoundsTransform =
     BoundsTransform { initial, target ->
         // Logic: If the card is in the lower half of the screen, arc downwards.
         // We use 800 as a rough threshold for "lower half" on modern devices.
         val arcDirection = if (initial.top > 800) ArcMode.ArcBelow else ArcMode.ArcAbove
-        
+
         keyframes {
             this.durationMillis = duration
             initial at 0 using arcDirection using SpriteFlightCurve
@@ -62,30 +65,46 @@ fun pokemonSpriteTransform(duration: Int = POKEDEX_ANIM_MS): BoundsTransform =
         }
     }
 
+/**
+ * Route definitions for the app.
+ * Using @Parcelize allows the navigation state to survive process death.
+ */
 @Serializable
-sealed interface PokedexRoute {
+sealed interface PokedexRoute : NavKey, Parcelable {
     @Serializable
+    @Parcelize
     data object List : PokedexRoute
+    
     @Serializable
+    @Parcelize
     data object Items : PokedexRoute
+    
     @Serializable
+    @Parcelize
     data object Moves : PokedexRoute
+    
     @Serializable
+    @Parcelize
     data object Strategy : PokedexRoute
+    
     @Serializable
+    @Parcelize
     data object Options : PokedexRoute
+    
     @Serializable
+    @Parcelize
     data class Detail(val pokemonId: String, val pokemonName: String) : PokedexRoute
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun MainNavigation(
-    backStack: SnapshotStateList<Any>,
+    backStack: NavBackStack<NavKey>,
     optionsViewModel: OptionsViewModel,
     onBack: () -> Unit
 ) {
-    val pokemonViewModel: PokemonViewModel = viewModel()
+    // FIX: Pass the Factory to ensure the ViewModel is created with its required repository.
+    val pokemonViewModel: PokemonViewModel = viewModel(factory = PokemonViewModel.Factory)
 
     SharedTransitionLayout {
         NavDisplay(

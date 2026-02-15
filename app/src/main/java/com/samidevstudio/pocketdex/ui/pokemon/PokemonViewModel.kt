@@ -1,11 +1,15 @@
 package com.samidevstudio.pocketdex.ui.pokemon
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.samidevstudio.pocketdex.data.DefaultPokemonRepository
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.samidevstudio.pocketdex.PocketDexApplication
 import com.samidevstudio.pocketdex.data.PokemonRepository
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -13,25 +17,22 @@ import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 60
 
-/**
- * ViewModel that manages the state for both the list and detail screens.
- */
 class PokemonViewModel(
-    private val repository: PokemonRepository = DefaultPokemonRepository()
+    private val repository: PokemonRepository
 ) : ViewModel() {
 
-    private val allPokemon = mutableListOf<PokemonUiModel>()
-    private var currentOffset = 0
-    private var isFetching = false
-
-    // Tracks in-progress detail fetches to prevent redundant network calls
-    private val activeDetailJobs = mutableMapOf<String, Deferred<PokemonDetailModel?>>()
+    private val _allPokemon = mutableStateListOf<PokemonUiModel>()
 
     var listUiState: PokemonListUiState by mutableStateOf(PokemonListUiState.Loading)
         private set
 
     var detailUiState: PokemonDetailUiState by mutableStateOf(PokemonDetailUiState.Loading)
         private set
+
+    private var currentOffset = 0
+    private var isFetching = false
+
+    private val activeDetailJobs = mutableMapOf<String, Deferred<PokemonDetailModel?>>()
 
     init {
         viewModelScope.launch {
@@ -41,10 +42,13 @@ class PokemonViewModel(
     }
 
     /**
-     * Loads detail for a specific Pokémon. 
-     * Uses the cache first, then checks for any active backfilling jobs before firing a new request.
+     * @param isInitialEntry When true, we're coming from the list, so clear old data.
      */
-    fun loadPokemonDetail(id: String) {
+    fun loadPokemonDetail(id: String, isInitialEntry: Boolean = false) {
+        if (isInitialEntry) {
+            detailUiState = PokemonDetailUiState.Loading
+        }
+
         val cached = repository.getCachedPokemonDetail(id)
         if (cached != null) {
             detailUiState = PokemonDetailUiState.Success(cached)
@@ -52,13 +56,13 @@ class PokemonViewModel(
         }
 
         viewModelScope.launch {
-            detailUiState = PokemonDetailUiState.Loading
-            detailUiState = try {
-                // If a backfill job is already fetching this ID, wait for it instead of starting a new one
+            try {
                 val detailModel = activeDetailJobs[id]?.await() ?: repository.getPokemonDetail(id)
-                PokemonDetailUiState.Success(detailModel)
+                detailUiState = PokemonDetailUiState.Success(detailModel)
             } catch (e: Exception) {
-                PokemonDetailUiState.Error(e.message ?: "Failed to load details")
+                if (detailUiState is PokemonDetailUiState.Loading) {
+                    detailUiState = PokemonDetailUiState.Error(e.message ?: "Failed to load details")
+                }
             }
         }
     }
@@ -75,11 +79,15 @@ class PokemonViewModel(
         isFetching = true
         try {
             val newItems = repository.getPokemonList(offset = currentOffset, limit = PAGE_SIZE)
-            allPokemon.addAll(newItems)
-            listUiState = PokemonListUiState.Success(allPokemon.toList())
+            _allPokemon.addAll(newItems)
+            
+            if (listUiState !is PokemonListUiState.Success) {
+                listUiState = PokemonListUiState.Success(_allPokemon)
+            }
+            
             currentOffset += PAGE_SIZE
         } catch (e: Exception) {
-            if (allPokemon.isEmpty()) {
+            if (_allPokemon.isEmpty()) {
                 listUiState = PokemonListUiState.Error(e.message ?: "Network error")
             }
         } finally {
@@ -88,13 +96,13 @@ class PokemonViewModel(
     }
 
     private suspend fun backfillTypes() {
-        val itemsToUpdate = allPokemon.mapIndexedNotNull { index, model ->
+        val itemsToUpdate = _allPokemon.mapIndexedNotNull { index, model ->
             if (model.types.isEmpty()) index else null
         }
         
         itemsToUpdate.chunked(20).forEach { batchIndices ->
             val jobs = batchIndices.map { index ->
-                val id = allPokemon[index].id
+                val id = _allPokemon[index].id
                 val deferred = viewModelScope.async {
                     try {
                         repository.getPokemonDetail(id)
@@ -102,22 +110,28 @@ class PokemonViewModel(
                         null
                     }
                 }
-                // Store the job so loadPokemonDetail() can "hitch a ride" on it
                 activeDetailJobs[id] = deferred
                 index to deferred
             }
 
-            val results = jobs.map { (index, deferred) ->
+            jobs.forEach { (index, deferred) ->
                 val detail = deferred.await()
-                // Clean up job map once done
-                activeDetailJobs.remove(allPokemon[index].id)
-                index to (detail?.types ?: emptyList())
+                activeDetailJobs -= _allPokemon[index].id
+                
+                if (detail != null) {
+                    _allPokemon[index] = _allPokemon[index].copy(types = detail.types)
+                }
             }
+        }
+    }
 
-            results.forEach { (index, types) ->
-                allPokemon[index] = allPokemon[index].copy(types = types)
+    companion object {
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val application = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as PocketDexApplication)
+                val pokemonRepository = application.container.pokemonRepository
+                PokemonViewModel(repository = pokemonRepository)
             }
-            listUiState = PokemonListUiState.Success(allPokemon.toList())
         }
     }
 }

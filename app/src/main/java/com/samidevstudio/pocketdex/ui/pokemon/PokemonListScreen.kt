@@ -94,8 +94,7 @@ fun PokemonScreen(
     ) { innerPadding ->
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+                .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             when (state) {
@@ -114,7 +113,8 @@ fun PokemonScreen(
                         sharedTransitionScope = sharedTransitionScope,
                         animatedVisibilityScope = animatedVisibilityScope,
                         onLoadMore = { viewModel.loadMore() },
-                        onPokemonClick = onPokemonClick
+                        onPokemonClick = onPokemonClick,
+                        topPadding = innerPadding.calculateTopPadding()
                     )
                 }
                 is PokemonListUiState.Error -> {
@@ -139,13 +139,19 @@ fun PokemonGrid(
     animatedVisibilityScope: AnimatedVisibilityScope,
     onLoadMore: () -> Unit,
     onPokemonClick: (PokemonUiModel) -> Unit,
+    topPadding: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 140.dp),
         state = gridState,
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(12.dp),
+        contentPadding = PaddingValues(
+            top = topPadding + 12.dp,
+            start = 12.dp,
+            end = 12.dp,
+            bottom = 200.dp
+        ),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {

@@ -1,30 +1,18 @@
 package com.samidevstudio.pocketdex.data
 
+import com.samidevstudio.pocketdex.ui.pokemon.EvolutionNode
 import com.samidevstudio.pocketdex.ui.pokemon.PokemonDetailModel
 import com.samidevstudio.pocketdex.ui.pokemon.PokemonUiModel
 import com.samidevstudio.pocketdex.ui.pokemon.StatInfo
 
-/**
- * Interface defining the operations for fetching Pokémon data.
- * Adhering to the Repository pattern for clean architecture.
- */
 interface PokemonRepository {
     suspend fun getPokemonList(offset: Int, limit: Int = 20): List<PokemonUiModel>
     suspend fun getPokemonDetail(id: String): PokemonDetailModel
-    
-    /**
-     * Checks if a Pokémon is already in the local cache.
-     */
     fun getCachedPokemonDetail(id: String): PokemonDetailModel?
 }
 
-/**
- * Default implementation of PokemonRepository that fetches data from the PokéAPI.
- * Now includes an in-memory cache to avoid redundant GET calls.
- */
 class DefaultPokemonRepository(private val apiService: PokeApiService = RetrofitClient.pokeApiService) : PokemonRepository {
 
-    // Simple in-memory cache to store already-fetched details
     private val detailCache = mutableMapOf<String, PokemonDetailModel>()
 
     override suspend fun getPokemonList(offset: Int, limit: Int): List<PokemonUiModel> {
@@ -34,25 +22,27 @@ class DefaultPokemonRepository(private val apiService: PokeApiService = Retrofit
                 id = item.id,
                 name = item.name,
                 imageUrl = item.imageUrl,
-                types = emptyList() // Types are backfilled later by the ViewModel
+                types = emptyList() // Backfilled later by ViewModel
             )
         }
     }
 
-    /**
-     * Fetches details, checking the cache first to prevent redundant network traffic.
-     */
     override suspend fun getPokemonDetail(id: String): PokemonDetailModel {
-        // Step 1: Check the cache
         detailCache[id]?.let {
-            return it
+            if (it.flavorText.isNotEmpty()) return it
         }
 
-        // Step 2: If not in cache, fetch from network
         val networkDetail = apiService.getPokemonDetail(id)
-        val detailModel = networkDetail.toPokemonDetailModel()
+        val speciesResponse = apiService.getPokemonSpecies(id)
+        val flavorText = speciesResponse.flavorTextEntries
+            .firstOrNull { it.language.name == "en" }
+            ?.flavorText?.replace("\n", " ")?.replace("\u000c", " ") ?: ""
+        
+        val evolutionChainResponse = apiService.getEvolutionChain(speciesResponse.evolutionChain.url)
+        val evolutions = flattenEvolutionChain(evolutionChainResponse.chain)
 
-        // Step 3: Save to cache and return
+        val detailModel = networkDetail.toPokemonDetailModel(flavorText, evolutions)
+
         detailCache[id] = detailModel
         return detailModel
     }
@@ -62,10 +52,27 @@ class DefaultPokemonRepository(private val apiService: PokeApiService = Retrofit
     }
 
     /**
-     * Extension function to convert network model to UI model.
-     * Centralizing mapping logic in the repository layer.
+     * Digs through the recursive evolution chain to create a flat list of nodes.
      */
-    private fun PokemonDetail.toPokemonDetailModel(): PokemonDetailModel {
+    private fun flattenEvolutionChain(chain: ChainLink): List<EvolutionNode> {
+        val nodes = mutableListOf<EvolutionNode>()
+        nodes.add(
+            EvolutionNode(
+                id = chain.species.id,
+                name = chain.species.name,
+                imageUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${chain.species.id}.png"
+            )
+        )
+        chain.evolvesTo.forEach {
+            nodes.addAll(flattenEvolutionChain(it))
+        }
+        return nodes
+    }
+
+    private fun PokemonDetail.toPokemonDetailModel(
+        flavorText: String,
+        evolutions: List<EvolutionNode>
+    ): PokemonDetailModel {
         return PokemonDetailModel(
             id = this.id.toString(),
             name = this.name,
@@ -78,7 +85,9 @@ class DefaultPokemonRepository(private val apiService: PokeApiService = Retrofit
                     name = it.stat.name.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase() else char.toString() },
                     value = it.baseStat
                 )
-            }
+            },
+            flavorText = flavorText,
+            evolutions = evolutions
         )
     }
 }

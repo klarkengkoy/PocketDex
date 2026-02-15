@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -25,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation3.runtime.rememberNavBackStack
 import com.samidevstudio.pocketdex.ui.components.PokeballCanvas
 import com.samidevstudio.pocketdex.ui.navigation.MainNavigation
 import com.samidevstudio.pocketdex.ui.navigation.PokedexRoute
@@ -53,7 +54,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             // OptionsViewModel now found in .ui.options
             val optionsViewModel: OptionsViewModel = viewModel()
-            val backStack = remember { mutableStateListOf<Any>(PokedexRoute.List) }
+            val backStack = rememberNavBackStack(PokedexRoute.List)
             val currentRoute = backStack.lastOrNull()
 
             PocketDexTheme(darkTheme = optionsViewModel.isDarkTheme) {
@@ -116,17 +117,24 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         floatingActionButton = {
+                            val interactionSource = remember { MutableInteractionSource() }
                             Box(
                                 modifier = Modifier
                                     .size(100.dp)
                                     .offset(y = 70.dp) 
-                                    .clickable {
+                                    .clickable(
+                                        interactionSource = interactionSource,
+                                        indication = null
+                                    ) {
                                         backStack.clear()
                                         backStack.add(PokedexRoute.List)
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
-                                PokeballCanvas(modifier = Modifier.fillMaxSize())
+                                PokeballCanvas(
+                                    modifier = Modifier.fillMaxSize(),
+                                    isRouteActive = currentRoute is PokedexRoute.List || currentRoute is PokedexRoute.Detail
+                                )
                             }
                         },
                         floatingActionButtonPosition = FabPosition.Center
@@ -155,12 +163,16 @@ fun NavTabItem(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Icon(
         imageVector = icon,
         contentDescription = null,
         tint = if (selected) Color(0xFFE3350D) else Color.Gray,
         modifier = Modifier
             .size(35.dp)
-            .clickable { onClick() }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onClick() }
     )
 }

@@ -1,7 +1,6 @@
 package com.samidevstudio.pocketdex.ui.components
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -15,11 +14,12 @@ import androidx.compose.ui.unit.dp
  * Uses relative coordinates to ensure "Pixel Perfection" at any size.
  */
 @Composable
-fun PokeballCanvas(modifier: Modifier = Modifier) {
+fun PokeballCanvas(modifier: Modifier = Modifier, isRouteActive: Boolean) {
     Canvas(modifier = modifier) {
         val radius = size.minDimension / 2
         val center = Offset(size.width / 2, size.height / 2)
         val strokeWidth = 4.dp.toPx()
+        val pokedexRed = Color(0xFFE3350D)
 
         // 1. Draw the Bottom White Half
         drawArc(
@@ -32,7 +32,7 @@ fun PokeballCanvas(modifier: Modifier = Modifier) {
 
         // 2. Draw the Top Red Half
         drawArc(
-            color = Color(0xFFE3350D), // Classic Pokedex Red
+            color = pokedexRed,
             startAngle = 180f,
             sweepAngle = 180f,
             useCenter = true,
@@ -65,7 +65,7 @@ fun PokeballCanvas(modifier: Modifier = Modifier) {
 
         // 6. Draw the Center Button (Inner White Circle)
         drawCircle(
-            color = Color.White,
+            color = if (isRouteActive) pokedexRed else Color.White,
             radius = radius * 0.15f,
             center = center
         )

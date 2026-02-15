@@ -5,12 +5,14 @@
 ## 🎨 Design Vision: "Pixel Perfection"
 *   **Retro Aesthetic:** Hand-crafted checkered backgrounds and transparent cards with 2dp black borders.
 *   **Sharp Rendering:** 1:1 square proportions and "Nearest Neighbor" scaling for crisp, pixelated sprites.
+*   **Interactive UI:** Modern Material 3 Hero Carousel implementation for evolution chains, featuring center-aligned pill-shaped previews and smooth morphing transitions.
 *   **Edge-to-Edge:** A fully immersive experience where the interface bleeds to the screen boundaries.
 
 ## 🛠️ The Core Engine
 *   **Data Source:** Built using the extensive PokéAPI database.
 *   **Clean Architecture:** Repository Pattern with intelligent in-memory caching.
-*   **Parallel Pipeline:** "Backfilling" strategy that loads basic info instantly and enriches details in the background.
+*   **Sequential Fetching:** Enrichment pipeline that loads Pokémon details, species flavor text, and evolution chains in a synchronized flow.
+*   **Navigation 3:** Robust navigation state management that persists across device rotations and configuration changes.
 
 ## 🗺️ Roadmap: The Pokeball Hub & Beyond
 The project is evolving toward a unique 5-tab hub system:
@@ -21,8 +23,8 @@ The project is evolving toward a unique 5-tab hub system:
 *   **Options:** Trainer profile, data management, and visual settings.
 
 ### 🔮 Future Features
-*   **Visual Mode Toggle:** A setting to switch between "Classic Retro" (Pixel sprites) and "HD Modern" (Official Artwork).
-*   **Evolution Chains:** Visualizing Pokémon growth paths.
+*   **Granular Entry Animations:** Staggered "pop-in" effects for card elements synced with Coil image loading.
+*   **Game Version Switcher:** Support for switching flavor text between different classic game versions.
 *   **Sound Engine:** 8-bit blips and bloops for UI interactions.
 
 ---
