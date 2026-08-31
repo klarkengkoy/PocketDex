@@ -1,8 +1,6 @@
 package com.samidevstudio.pocketdex.ui.theme
 
 import androidx.compose.foundation.border
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset

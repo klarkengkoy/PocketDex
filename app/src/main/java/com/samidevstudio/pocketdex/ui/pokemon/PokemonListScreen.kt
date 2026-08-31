@@ -1,7 +1,6 @@
 package com.samidevstudio.pocketdex.ui.pokemon
 
 import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,6 +31,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -52,7 +53,7 @@ import com.samidevstudio.pocketdex.ui.theme.PokemonTypeColors
 import com.samidevstudio.pocketdex.ui.theme.retroBackground
 import com.samidevstudio.pocketdex.ui.theme.retroBorder
 
-@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PokemonScreen(
     viewModel: PokemonViewModel,
@@ -60,7 +61,8 @@ fun PokemonScreen(
     animatedVisibilityScope: AnimatedVisibilityScope,
     onPokemonClick: (PokemonUiModel) -> Unit
 ) {
-    val state = viewModel.listUiState
+    val stateValue by viewModel.listUiState.collectAsState()
+    val state = stateValue
     val gridState = rememberLazyGridState()
 
     val color1 = MaterialTheme.colorScheme.surface
@@ -130,7 +132,6 @@ fun PokemonScreen(
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun PokemonGrid(
     pokemonList: List<PokemonUiModel>,
@@ -159,7 +160,8 @@ fun PokemonGrid(
             items = pokemonList,
             key = { _, pokemon -> pokemon.id }
         ) { index, pokemon ->
-            if (index == pokemonList.size - 1) {
+            // Trigger pre-fetch when we are 10 items from the bottom
+            if (index >= pokemonList.size - 10) {
                 onLoadMore()
             }
             PokemonCard(
@@ -172,7 +174,6 @@ fun PokemonGrid(
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun PokemonCard(
     pokemon: PokemonUiModel,

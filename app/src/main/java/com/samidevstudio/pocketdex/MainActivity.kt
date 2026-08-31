@@ -32,27 +32,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.rememberNavBackStack
 import com.samidevstudio.pocketdex.ui.components.PokeballCanvas
 import com.samidevstudio.pocketdex.ui.navigation.MainNavigation
 import com.samidevstudio.pocketdex.ui.navigation.PokedexRoute
+import com.samidevstudio.pocketdex.ui.options.OptionsViewModel
 import com.samidevstudio.pocketdex.ui.theme.PocketDexTheme
 import com.samidevstudio.pocketdex.ui.theme.RetroStyles
-import com.samidevstudio.pocketdex.ui.options.OptionsViewModel
 
-/**
- * MainActivity serves as the entry point.
- * Hosts the 5-tab "Pokeball Hub" structure with immersive layering.
- */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install the Splash Screen MUST be called before super.onCreate()
+        installSplashScreen()
+        
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
 
         setContent {
-            // OptionsViewModel now found in .ui.options
             val optionsViewModel: OptionsViewModel = viewModel()
             val backStack = rememberNavBackStack(PokedexRoute.List)
             val currentRoute = backStack.lastOrNull()
@@ -121,7 +120,7 @@ class MainActivity : ComponentActivity() {
                             Box(
                                 modifier = Modifier
                                     .size(100.dp)
-                                    .offset(y = 70.dp) 
+                                    .offset(y = 70.dp)
                                     .clickable(
                                         interactionSource = interactionSource,
                                         indication = null

@@ -52,7 +52,7 @@ fun OptionsScreen(
     // Dynamic checkered colors based on current theme surface
     val color1 = MaterialTheme.colorScheme.surface
     val isLight = color1.luminance() > 0.5f
-    
+
     // Create a secondary color by compositing a tiny bit of contrast over the base
     val color2 = if (isLight) {
         Color.Black.copy(alpha = 0.05f).compositeOver(color1)
