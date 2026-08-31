@@ -1,5 +1,8 @@
 package com.samidevstudio.pocketdex.ui.pokemon
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class PokemonUiModel(
     val id: String,
     val name: String,
@@ -7,6 +10,7 @@ data class PokemonUiModel(
     val types: List<String>
 )
 
+@Serializable
 data class PokemonDetailModel(
     val id: String,
     val name: String,
@@ -16,15 +20,18 @@ data class PokemonDetailModel(
     val weight: Int,
     val stats: List<StatInfo>,
     val flavorText: String = "",
-    val evolutions: List<EvolutionNode> = emptyList()
+    val evolutions: List<EvolutionNode> = emptyList(),
+    val chainId: String = ""
 )
 
+@Serializable
 data class EvolutionNode(
     val id: String,
     val name: String,
     val imageUrl: String
 )
 
+@Serializable
 data class StatInfo(
     val name: String,
     val value: Int
