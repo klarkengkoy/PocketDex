@@ -1,3 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <style name="Theme.PocketDex" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Set the background color of the splash screen, which can be a solid color or a drawable -->
+        <item name="windowSplashScreenBackground">@color/surface_white</item>
+
+        <!-- Use the foreground of your adaptive icon to avoid the fixed-size background issue -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/main_app_icon_foreground</item>
+
+        <!-- Theme to use after the splash screen is finished -->
+        <item name="postSplashScreenTheme">@style/Theme.PocketDex</item>
+    </style>
 </resources>

@@ -1,3 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <style name="Theme.PocketDex" parent="android:Theme.Material.NoActionBar" />
+
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- In dark mode, we use a darker base color for the grid -->
+        <item name="windowSplashScreenBackground">@color/surface_dark</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/main_app_icon_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.PocketDex</item>
+    </style>
 </resources>
