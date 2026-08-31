@@ -16,3 +16,7 @@ local.properties
 
 # Private project log, should not be committed.
 DEVELOPER_DIARY.md
+
+# Agent and Artifact metadata
+.artifacts/
+.agent/
