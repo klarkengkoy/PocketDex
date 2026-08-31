@@ -1,9 +1,5 @@
 package com.samidevstudio.pocketdex.ui.pokemon
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -11,116 +7,90 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.samidevstudio.pocketdex.PocketDexApplication
 import com.samidevstudio.pocketdex.data.PokemonRepository
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val PAGE_SIZE = 60
 
 class PokemonViewModel(
-    private val repository: PokemonRepository
+    private val repository: PokemonRepository,
 ) : ViewModel() {
-
-    private val _allPokemon = mutableStateListOf<PokemonUiModel>()
-
-    var listUiState: PokemonListUiState by mutableStateOf(PokemonListUiState.Loading)
-        private set
-
-    var detailUiState: PokemonDetailUiState by mutableStateOf(PokemonDetailUiState.Loading)
-        private set
 
     private var currentOffset = 0
     private var isFetching = false
 
-    private val activeDetailJobs = mutableMapOf<String, Deferred<PokemonDetailModel?>>()
-
-    init {
-        viewModelScope.launch {
-            fetchNamesBatch()
-            backfillTypes()
+    val listUiState: StateFlow<PokemonListUiState> = repository.getPokemonListFlow()
+        .map { list ->
+            // Keep offset in sync with what's actually in the DB
+            if (list.isNotEmpty() && !isFetching) {
+                currentOffset = list.size
+            }
+            
+            if (list.isEmpty()) {
+                if (currentOffset == 0) fetchNamesBatch()
+                PokemonListUiState.Loading
+            } else {
+                PokemonListUiState.Success(list)
+            }
         }
-    }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = PokemonListUiState.Loading
+        )
 
-    /**
-     * @param isInitialEntry When true, we're coming from the list, so clear old data.
-     */
-    fun loadPokemonDetail(id: String, isInitialEntry: Boolean = false) {
-        if (isInitialEntry) {
-            detailUiState = PokemonDetailUiState.Loading
-        }
+    private val _currentPokemonId = MutableStateFlow<String?>(null)
 
-        val cached = repository.getCachedPokemonDetail(id)
-        if (cached != null) {
-            detailUiState = PokemonDetailUiState.Success(cached)
-            return
-        }
-
-        viewModelScope.launch {
-            try {
-                val detailModel = activeDetailJobs[id]?.await() ?: repository.getPokemonDetail(id)
-                detailUiState = PokemonDetailUiState.Success(detailModel)
-            } catch (e: Exception) {
-                if (detailUiState is PokemonDetailUiState.Loading) {
-                    detailUiState = PokemonDetailUiState.Error(e.message ?: "Failed to load details")
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val detailUiState: StateFlow<PokemonDetailUiState> = _currentPokemonId
+        .flatMapLatest { id ->
+            if (id == null) return@flatMapLatest flowOf(PokemonDetailUiState.Loading)
+            
+            // Observe DB and combine with evolution chain
+            repository.getPokemonDetailFlow(id).flatMapLatest { detail ->
+                if (detail == null) {
+                    // Trigger sync if not in DB
+                    viewModelScope.launch { repository.syncPokemonDetail(id) }
+                    flowOf(PokemonDetailUiState.Loading)
+                } else {
+                    repository.getEvolutionChainFlow(detail.chainId).map { evolutions ->
+                        PokemonDetailUiState.Success(detail.copy(evolutions = evolutions))
+                    }
                 }
             }
         }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = PokemonDetailUiState.Loading
+        )
+
+    fun loadPokemonDetail(id: String?) {
+        _currentPokemonId.value = id
     }
 
     fun loadMore() {
-        viewModelScope.launch {
-            fetchNamesBatch()
-            backfillTypes()
-        }
+        fetchNamesBatch()
     }
 
-    private suspend fun fetchNamesBatch() {
+    private fun fetchNamesBatch() {
         if (isFetching) return
         isFetching = true
-        try {
-            val newItems = repository.getPokemonList(offset = currentOffset, limit = PAGE_SIZE)
-            _allPokemon.addAll(newItems)
-            
-            if (listUiState !is PokemonListUiState.Success) {
-                listUiState = PokemonListUiState.Success(_allPokemon)
-            }
-            
-            currentOffset += PAGE_SIZE
-        } catch (e: Exception) {
-            if (_allPokemon.isEmpty()) {
-                listUiState = PokemonListUiState.Error(e.message ?: "Network error")
-            }
-        } finally {
-            isFetching = false
-        }
-    }
-
-    private suspend fun backfillTypes() {
-        val itemsToUpdate = _allPokemon.mapIndexedNotNull { index, model ->
-            if (model.types.isEmpty()) index else null
-        }
-        
-        itemsToUpdate.chunked(20).forEach { batchIndices ->
-            val jobs = batchIndices.map { index ->
-                val id = _allPokemon[index].id
-                val deferred = viewModelScope.async {
-                    try {
-                        repository.getPokemonDetail(id)
-                    } catch (_: Exception) {
-                        null
-                    }
-                }
-                activeDetailJobs[id] = deferred
-                index to deferred
-            }
-
-            jobs.forEach { (index, deferred) ->
-                val detail = deferred.await()
-                activeDetailJobs -= _allPokemon[index].id
-                
-                if (detail != null) {
-                    _allPokemon[index] = _allPokemon[index].copy(types = detail.types)
-                }
+        viewModelScope.launch {
+            try {
+                repository.fetchPokemonList(offset = currentOffset, limit = PAGE_SIZE)
+                currentOffset += PAGE_SIZE
+            } catch (_: Exception) {
+                // Handle error
+            } finally {
+                isFetching = false
             }
         }
     }
