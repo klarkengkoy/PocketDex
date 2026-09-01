@@ -2,15 +2,20 @@ package com.samidevstudio.pocketdex.ui.theme
 
 import androidx.compose.foundation.border
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -32,10 +37,12 @@ object RetroStyles {
      * A custom shape for the BottomAppBar that creates a "Cradle" cutout
      * for the central Pokeball.
      */
-    val CradleShape: Shape = CradleShapeImpl(
-        cutoutRadius = 64.dp,
+    fun cradleShape(cutoutRadius: Dp = 64.dp): Shape = CradleShapeImpl(
+        cutoutRadius = cutoutRadius,
         cornerRadius = 15.dp  
     )
+    
+    val CradleShape = cradleShape()
 }
 
 /**
@@ -92,26 +99,42 @@ private class CradleShapeImpl(
 }
 
 /**
- * A custom modifier that draws a retro checkered "canvas" background.
- * Now supports dynamic theming by accepting colors.
+ * A hardware-accelerated modifier that draws a retro checkered background.
+ * Uses drawWithCache to reduce draw calls from O(N) to O(1) and cache the shader.
  */
 fun Modifier.retroBackground(
     gridSize: Dp = RetroStyles.GridSize,
     color1: Color,
     color2: Color
-): Modifier = this.drawBehind {
-    val sizePx = gridSize.toPx()
-    val columns = (size.width / sizePx).toInt() + 1
-    val rows = (size.height / sizePx).toInt() + 1
+): Modifier = this.drawWithCache {
+    val sizePx = gridSize.toPx().toInt()
+    if (sizePx <= 0) {
+        onDrawBehind { }
+    } else {
+        // Create a tiny 2x2 pattern bitmap
+        val patternSize = sizePx * 2
+        val bitmap = ImageBitmap(patternSize, patternSize)
+        val canvas = Canvas(bitmap)
+        val paint = Paint()
 
-    for (x in 0 until columns) {
-        for (y in 0 until rows) {
-            val color = if ((x + y) % 2 == 0) color1 else color2
-            drawRect(
-                color = color,
-                topLeft = Offset(x * sizePx, y * sizePx),
-                size = Size(sizePx, sizePx)
-            )
+        // Square 1 (Top-Left)
+        paint.color = color1
+        canvas.drawRect(Rect(0f, 0f, sizePx.toFloat(), sizePx.toFloat()), paint)
+        // Square 2 (Top-Right)
+        paint.color = color2
+        canvas.drawRect(Rect(sizePx.toFloat(), 0f, patternSize.toFloat(), sizePx.toFloat()), paint)
+        // Square 3 (Bottom-Left)
+        paint.color = color2
+        canvas.drawRect(Rect(0f, sizePx.toFloat(), sizePx.toFloat(), patternSize.toFloat()), paint)
+        // Square 4 (Bottom-Right)
+        paint.color = color1
+        canvas.drawRect(Rect(sizePx.toFloat(), sizePx.toFloat(), patternSize.toFloat(), patternSize.toFloat()), paint)
+
+        val shader = ImageShader(bitmap, TileMode.Repeated, TileMode.Repeated)
+        val brush = ShaderBrush(shader)
+
+        onDrawBehind {
+            drawRect(brush = brush)
         }
     }
 }

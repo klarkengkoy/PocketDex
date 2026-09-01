@@ -1,7 +1,9 @@
 package com.samidevstudio.pocketdex.ui.pokemon
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 
+@Immutable
 @Serializable
 data class PokemonUiModel(
     val id: String,
@@ -10,6 +12,7 @@ data class PokemonUiModel(
     val types: List<String>
 )
 
+@Immutable
 @Serializable
 data class PokemonDetailModel(
     val id: String,
@@ -24,6 +27,7 @@ data class PokemonDetailModel(
     val chainId: String = ""
 )
 
+@Immutable
 @Serializable
 data class EvolutionNode(
     val id: String,
@@ -31,6 +35,7 @@ data class EvolutionNode(
     val imageUrl: String
 )
 
+@Immutable
 @Serializable
 data class StatInfo(
     val name: String,
