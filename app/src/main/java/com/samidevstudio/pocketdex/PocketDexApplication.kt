@@ -15,10 +15,5 @@ class PocketDexApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = DefaultAppContainer(this)
-
-        // Start the continuous evolution chain crawler in the background
-        applicationScope.launch {
-            container.pokemonRepository.startEvolutionChainCrawler()
-        }
     }
 }

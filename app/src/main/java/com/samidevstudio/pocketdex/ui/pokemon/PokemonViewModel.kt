@@ -72,6 +72,12 @@ class PokemonViewModel(
             initialValue = PokemonDetailUiState.Loading
         )
 
+    init {
+        viewModelScope.launch {
+            repository.backfillMissingTypes()
+        }
+    }
+
     fun loadPokemonDetail(id: String?) {
         _currentPokemonId.value = id
     }
@@ -87,6 +93,8 @@ class PokemonViewModel(
             try {
                 repository.fetchPokemonList(offset = currentOffset, limit = PAGE_SIZE)
                 currentOffset += PAGE_SIZE
+                // Trigger backfill for the newly added batch
+                repository.backfillMissingTypes()
             } catch (_: Exception) {
                 // Handle error
             } finally {
