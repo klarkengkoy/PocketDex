@@ -1,5 +1,6 @@
 package com.samidevstudio.pocketdex.ui.pokemon
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.LinearEasing
@@ -12,6 +13,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,7 +47,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -61,6 +62,7 @@ import com.samidevstudio.pocketdex.ui.pokemon.components.EvolutionCarousel
 import com.samidevstudio.pocketdex.ui.pokemon.components.PokemonDescriptionCard
 import com.samidevstudio.pocketdex.ui.pokemon.components.PokemonStatsCard
 import com.samidevstudio.pocketdex.ui.theme.retroBackground
+import kotlinx.coroutines.delay
 
 @Composable
 fun AnimatedLoadingText() {
@@ -114,28 +116,26 @@ fun PokemonDetailScreen(
         
         var isBackingOut by remember { mutableStateOf(false) }
         
+        // PERFORMANCE: Disable shared element tracking after the initial flight to save CPU
+        // during carousel swipes.
+        var isTransitionFinished by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            delay(1000L)
+            isTransitionFinished = true
+        }
+        
         // Persist the last successful family tree to prevent the carousel from 
         // flickering/resetting when swiping between members of the same family.
         var lastValidEvolutions by remember { mutableStateOf<List<EvolutionNode>>(emptyList()) }
         
+        // STABLE CONTAINER: Persist the last successful Pokémon data to prevent the screen
+        // from blinking or emptying during loading states.
+        var displayPokemon by remember { mutableStateOf<PokemonDetailModel?>(null) }
+        
         LaunchedEffect(state) {
             if (state is PokemonDetailUiState.Success) {
                 lastValidEvolutions = state.pokemon.evolutions
-            }
-        }
-
-        val color1 = MaterialTheme.colorScheme.surface
-        val color2 = if (color1.luminance() > 0.5f) {
-            Color.Black.copy(alpha = 0.05f).compositeOver(color1)
-        } else {
-            Color.White.copy(alpha = 0.05f).compositeOver(color1)
-        }
-
-        val selectedPokemonName = remember(state) {
-            if (state is PokemonDetailUiState.Success) {
-                state.pokemon.name.uppercase()
-            } else {
-                pokemonName.uppercase()
+                displayPokemon = state.pokemon
             }
         }
 
@@ -180,9 +180,7 @@ fun PokemonDetailScreen(
                 )
             },
             containerColor = Color.Transparent,
-            modifier = Modifier
-                .fillMaxSize()
-                .retroBackground(color1 = color1, color2 = color2)
+            modifier = Modifier.fillMaxSize()
         ) { innerPadding ->
             val density = LocalDensity.current
             val windowInfo = LocalWindowInfo.current
@@ -251,6 +249,7 @@ fun PokemonDetailScreen(
                             sharedTransitionScope = sharedTransitionScope,
                             animatedVisibilityScope = animatedVisibilityScope,
                             isBackingOut = isBackingOut,
+                            isTransitionFinished = isTransitionFinished,
                             onBackingOutChange = { isBackingOut = it },
                             onPokemonChange = { viewModel.loadPokemonDetail(it) },
                             onBack = onBack
@@ -260,47 +259,64 @@ fun PokemonDetailScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                if (state is PokemonDetailUiState.Success) {
-                    val pokemon = state.pokemon
-                    
-                    with(sharedTransitionScope) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier
-                                .padding(bottom = 16.dp)
-                                .sharedElement(
-                                    sharedContentState = rememberSharedContentState(key = "pokemon-types-$pokemonId"),
-                                    animatedVisibilityScope = animatedVisibilityScope,
-                                    boundsTransform = pokemonSpriteTransform()
-                                )
-                        ) {
-                            pokemon.types.forEach { type ->
-                                DetailTypeBadge(type = type)
+                AnimatedContent(
+                    targetState = displayPokemon,
+                    transitionSpec = {
+                        fadeIn(tween(400)) togetherWith fadeOut(tween(400))
+                    },
+                    label = "pokemonContent"
+                ) { pokemon ->
+                    if (pokemon != null) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            with(sharedTransitionScope) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier
+                                        .padding(bottom = 16.dp)
+                                        .sharedElement(
+                                            sharedContentState = rememberSharedContentState(key = "pokemon-types-$pokemonId"),
+                                            animatedVisibilityScope = animatedVisibilityScope,
+                                            boundsTransform = pokemonSpriteTransform()
+                                        )
+                                ) {
+                                    pokemon.types.forEach { type ->
+                                        DetailTypeBadge(type = type)
+                                    }
+                                }
                             }
-                        }
-                    }
-                    
-                    with(animatedVisibilityScope) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.animateEnterExit(
-                                enter = fadeIn(tween(POKEDEX_ANIM_MS, delayMillis = 150)) + 
-                                        slideInVertically(tween(POKEDEX_ANIM_MS, delayMillis = 150, easing = PokedexSettlingCurve)) { it / 4 },
-                                exit = fadeOut(tween(300)) + 
-                                        slideOutVertically(tween(300)) { it / 4 }
-                            )
-                        ) {
-                            PokemonStatsCard(
-                                pokemon = pokemon,
-                                displayName = selectedPokemonName,
-                                sharedTransitionScope = sharedTransitionScope,
-                                animatedVisibilityScope = animatedVisibilityScope
-                            )
 
-                            if (pokemon.flavorText.isNotEmpty()) {
-                                PokemonDescriptionCard(description = pokemon.flavorText)
+                            with(animatedVisibilityScope) {
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                                    modifier = Modifier.animateEnterExit(
+                                        enter = fadeIn(tween(POKEDEX_ANIM_MS, delayMillis = 150)) +
+                                                slideInVertically(
+                                                    tween(
+                                                        POKEDEX_ANIM_MS,
+                                                        delayMillis = 150,
+                                                        easing = PokedexSettlingCurve
+                                                    )
+                                                ) { it / 4 },
+                                        exit = fadeOut(tween(300)) +
+                                                slideOutVertically(tween(300)) { it / 4 }
+                                    )
+                                ) {
+                                    PokemonStatsCard(
+                                        pokemon = pokemon,
+                                        displayName = pokemon.name.uppercase(),
+                                        sharedTransitionScope = sharedTransitionScope,
+                                        animatedVisibilityScope = animatedVisibilityScope
+                                    )
+
+                                    if (pokemon.flavorText.isNotEmpty()) {
+                                        PokemonDescriptionCard(description = pokemon.flavorText)
+                                    }
+                                }
                             }
                         }
+                    } else {
+                        // Initial loading state before any Pokémon data is available
+                        Box(modifier = Modifier.height(400.dp))
                     }
                 }
             }

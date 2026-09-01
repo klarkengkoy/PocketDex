@@ -45,25 +45,23 @@ fun EvolutionCarousel(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
     isBackingOut: Boolean,
+    isTransitionFinished: Boolean,
     onBackingOutChange: (Boolean) -> Unit,
     onPokemonChange: (String) -> Unit,
     onBack: () -> Unit
 ) {
-    // We use a combination of evolutions.size and the chain ID (if available) 
-    // to determine when to reset the pager. Just using 'evolutions' instance 
-    // can cause unnecessary resets if the list is re-emitted with same content.
     val chainKey = remember(evolutions) {
         evolutions.joinToString(",") { it.id }
     }
+    
+    // PRE-ALLOCATED SHAPE: Creating this outside the draw loop prevents thousands of 
+    // object allocations per second during scrolls.
+    val carouselShape = remember { RoundedCornerShape(32.dp) }
 
     key(chainKey) {
-        // Use currentDisplayId as the anchor for the initial page, NOT the entry pokemonId.
-        // This ensures that if the carousel resets (e.g. pop-in), it stays on the 
-        // Pokémon the user is currently looking at.
         val initialPage = remember(evolutions, currentDisplayId) {
             val index = evolutions.indexOfFirst { it.id == currentDisplayId }
             if (index != -1) index else {
-                // Fallback to entry ID if current one not found
                 evolutions.indexOfFirst { it.id == pokemonId }.coerceAtLeast(0)
             }
         }
@@ -72,7 +70,6 @@ fun EvolutionCarousel(
             initialPage = initialPage
         ) { evolutions.size }
 
-        // Handling back button to fly the carousel back to the starting Pokémon before exiting.
         BackHandler(enabled = !isBackingOut) {
             onBackingOutChange(true)
         }
@@ -89,13 +86,6 @@ fun EvolutionCarousel(
 
         LaunchedEffect(pagerState, currentDisplayId) {
             snapshotFlow { pagerState.currentPage }.collectLatest { page ->
-                // CRITICAL FIX: "Compatibility Check"
-                // Only trigger a new Pokémon load if:
-                // 1. We are not currently exiting the screen.
-                // 2. The Pokémon we are parked on is actually different from the current display.
-                // 3. MOST IMPORTANT: The current Pokémon we are *supposed* to be looking at 
-                //    actually belongs to this evolution chain. This prevents a "Feedback Loop"
-                //    where stale carousel data overwrites a fresh detail request.
                 val currentPokemonIsInThisChain = evolutions.any { it.id == currentDisplayId }
 
                 if (page < evolutions.size && !isBackingOut && currentPokemonIsInThisChain) {
@@ -131,8 +121,8 @@ fun EvolutionCarousel(
                         this.scaleY = 1.0f 
                         this.alpha = lerp(0.4f, 1f, fraction)
                         
-                        val cornerSize = lerp(100f, 32f, fraction).dp.toPx()
-                        this.shape = RoundedCornerShape(cornerSize)
+                        // FIX: Using the pre-allocated shape to stop Garbage Collection stuttering.
+                        this.shape = carouselShape
                         this.clip = true
 
                         val moveAmount = (1f - widthScale) * size.width * 0.65f
@@ -166,7 +156,9 @@ fun EvolutionCarousel(
                                 .size(240.dp)
                                 .padding(16.dp)
                                 .then(
-                                    if (node.id == pokemonId) {
+                                    // RE-ENABLE shared element tracking if we are currently backing out.
+                                    // This allows the "return flight" animation to find its target.
+                                    if (node.id == pokemonId && (!isTransitionFinished || isBackingOut)) {
                                         Modifier.sharedElement(
                                             sharedContentState = rememberSharedContentState(key = "pokemon-image-$pokemonId"),
                                             animatedVisibilityScope = animatedVisibilityScope,

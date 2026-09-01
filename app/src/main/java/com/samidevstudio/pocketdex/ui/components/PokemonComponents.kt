@@ -1,5 +1,8 @@
 package com.samidevstudio.pocketdex.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -13,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -57,6 +61,18 @@ fun DetailTypeBadge(type: String) {
 
 @Composable
 fun RetroStatBar(name: String, value: Int) {
+    val animatedValue by animateIntAsState(
+        targetValue = value,
+        animationSpec = tween(durationMillis = 500),
+        label = "statValue"
+    )
+    
+    val animatedProgress by animateFloatAsState(
+        targetValue = value / 255f,
+        animationSpec = tween(durationMillis = 500),
+        label = "statProgress"
+    )
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -77,16 +93,15 @@ fun RetroStatBar(name: String, value: Int) {
                 .border(1.dp, MaterialTheme.colorScheme.onSurface)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            val progress = (value / 255f).coerceIn(0f, 1f)
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth(progress)
+                    .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
                     .background(MaterialTheme.colorScheme.primary)
             )
         }
         Text(
-            text = value.toString().padStart(3),
+            text = animatedValue.toString().padStart(3),
             modifier = Modifier.padding(start = 8.dp),
             fontFamily = FontFamily.Monospace,
             fontSize = 12.sp,
