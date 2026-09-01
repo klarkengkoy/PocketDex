@@ -24,13 +24,15 @@ interface PokemonRepository {
     
     suspend fun syncPokemonDetail(id: String)
     suspend fun syncEvolutionChain(chainId: String)
-    suspend fun startEvolutionChainCrawler()
+    suspend fun backfillMissingTypes()
 }
 
 class DefaultPokemonRepository(
     private val apiService: PokeApiService = RetrofitClient.pokeApiService,
     private val pokemonDao: PokemonDao
 ) : PokemonRepository {
+
+    private var isBackfilling = false
 
     override fun getPokemonListFlow(): Flow<List<PokemonUiModel>> {
         return pokemonDao.getPokemonList(1000, 0).map { list -> 
@@ -91,6 +93,9 @@ class DefaultPokemonRepository(
             val detailModel = networkDetail.toPokemonDetailModel(flavorText, emptyList(), chainId)
             pokemonDao.insertPokemonDetail(detailModel.toEntity(id, chainId))
 
+            // Update the types in the main list table so they appear on the home screen
+            pokemonDao.updatePokemonTypes(id, detailModel.types)
+
             val localChain = pokemonDao.getEvolutionChain(chainId)
             if (localChain == null) {
                 syncEvolutionChain(chainId)
@@ -116,37 +121,43 @@ class DefaultPokemonRepository(
         }
     }
 
-    override suspend fun startEvolutionChainCrawler() {
-        var currentId = 1
-        var backoffMs = 0L
-
-        while (true) {
-            try {
-                if (backoffMs > 0) {
-                    delay(backoffMs.milliseconds)
-                }
-
-                val existing = pokemonDao.getEvolutionChain(currentId.toString())
-                if (existing == null) {
-                    syncEvolutionChain(currentId.toString())
-                    backoffMs = 0
+    override suspend fun backfillMissingTypes() {
+        if (isBackfilling) return
+        isBackfilling = true
+        
+        try {
+            var backoffMs = 0L
+            
+            while (true) {
+                val ids = pokemonDao.getPokemonIdsMissingTypes()
+                if (ids.isEmpty()) break
+                
+                for (id in ids) {
+                    try {
+                        if (backoffMs > 0) {
+                            delay(backoffMs.milliseconds)
+                        }
+                        
+                        syncPokemonDetail(id)
+                        
+                        // Reset backoff on success
+                        backoffMs = 0
+                    } catch (e: HttpException) {
+                        if (e.code() == 429) {
+                            backoffMs = (backoffMs * 2).coerceAtLeast(1000L).coerceAtMost(60000L)
+                            break 
+                        } else {
+                            continue
+                        }
+                    } catch (_: Exception) {
+                        continue
+                    }
                 }
                 
-                currentId++
-                delay(100.milliseconds) 
-            } catch (e: HttpException) {
-                if (e.code() == 429) {
-                    backoffMs = (backoffMs * 2).coerceAtLeast(1000L).coerceAtMost(60000L)
-                } else {
-                    currentId++
-                    backoffMs = 0
-                }
-            } catch (_: Exception) {
-                currentId++
-                delay(1000.milliseconds)
+                if (backoffMs == 0L) delay(100.milliseconds)
             }
-            
-            if (currentId > 600) break
+        } finally {
+            isBackfilling = false
         }
     }
 

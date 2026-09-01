@@ -26,6 +26,12 @@ interface PokemonDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPokemonDetail(pokemonDetail: PokemonDetailEntity)
 
+    @Query("UPDATE pokemon SET types = :types WHERE id = :id")
+    suspend fun updatePokemonTypes(id: String, types: List<String>)
+
+    @Query("SELECT id FROM pokemon WHERE types = '[]' ORDER BY CAST(id AS INTEGER) ASC LIMIT 100")
+    suspend fun getPokemonIdsMissingTypes(): List<String>
+
     @Query("SELECT * FROM evolution_chains WHERE id = :id")
     suspend fun getEvolutionChain(id: String): EvolutionChainEntity?
 

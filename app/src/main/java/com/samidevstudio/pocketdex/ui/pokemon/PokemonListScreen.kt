@@ -2,17 +2,18 @@ package com.samidevstudio.pocketdex.ui.pokemon
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,28 +24,33 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -64,49 +70,38 @@ fun PokemonScreen(
     val stateValue by viewModel.listUiState.collectAsState()
     val state = stateValue
     val gridState = rememberLazyGridState()
-
-    val color1 = MaterialTheme.colorScheme.surface
-    val color2 = if (color1.luminance() > 0.5f) {
-        Color.Black.copy(alpha = 0.05f).compositeOver(color1)
-    } else {
-        Color.White.copy(alpha = 0.05f).compositeOver(color1)
-    }
+    
+    // PERFORMANCE: Track which Pokémon was clicked to only apply shared elements to that specific card.
+    // This reduces bound tracking from 200+ targets to just 4.
+    var clickedPokemonId by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "POKEDEX",
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
-                )
-            )
-        },
         containerColor = Color.Transparent,
-        modifier = Modifier
-            .fillMaxSize()
-            .retroBackground(color1 = color1, color2 = color2)
+        modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
+        val titleAlpha by remember {
+            derivedStateOf {
+                if (gridState.firstVisibleItemIndex > 0) 0f
+                else {
+                    // Fade out completely within 50 pixels of scroll
+                    (1f - (gridState.firstVisibleItemScrollOffset / 50f)).coerceIn(0f, 1f)
+                }
+            }
+        }
+
         Box(
-            modifier = Modifier
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.fillMaxSize()
         ) {
             when (state) {
                 is PokemonListUiState.Loading -> {
-                    Text(
-                        text = "LOADING...",
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "LOADING...",
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
                 is PokemonListUiState.Success -> {
                     PokemonGrid(
@@ -115,18 +110,41 @@ fun PokemonScreen(
                         sharedTransitionScope = sharedTransitionScope,
                         animatedVisibilityScope = animatedVisibilityScope,
                         onLoadMore = { viewModel.loadMore() },
-                        onPokemonClick = onPokemonClick,
-                        topPadding = innerPadding.calculateTopPadding()
+                        onPokemonClick = { pokemon ->
+                            clickedPokemonId = pokemon.id
+                            onPokemonClick(pokemon)
+                        },
+                        topPadding = innerPadding.calculateTopPadding(),
+                        clickedPokemonId = clickedPokemonId
                     )
                 }
                 is PokemonListUiState.Error -> {
-                    Text(
-                        text = "ERROR: ${state.message}",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(16.dp),
-                        fontFamily = FontFamily.Monospace
-                    )
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "ERROR: ${state.message}",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(16.dp),
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
                 }
+            }
+
+            // Fixed POKEDEX Title that fades out
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = innerPadding.calculateTopPadding() + 8.dp)
+                    .graphicsLayer { alpha = titleAlpha },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "POKEDEX",
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 24.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }
@@ -141,6 +159,7 @@ fun PokemonGrid(
     onLoadMore: () -> Unit,
     onPokemonClick: (PokemonUiModel) -> Unit,
     topPadding: androidx.compose.ui.unit.Dp,
+    clickedPokemonId: String?,
     modifier: Modifier = Modifier
 ) {
     LazyVerticalGrid(
@@ -148,7 +167,7 @@ fun PokemonGrid(
         state = gridState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            top = topPadding + 12.dp,
+            top = topPadding + 64.dp, // Match the height of the fixed header
             start = 12.dp,
             end = 12.dp,
             bottom = 200.dp
@@ -168,6 +187,7 @@ fun PokemonGrid(
                 pokemon = pokemon,
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = animatedVisibilityScope,
+                isSharedElementEnabled = pokemon.id == clickedPokemonId,
                 onClick = { onPokemonClick(pokemon) }
             )
         }
@@ -179,6 +199,7 @@ fun PokemonCard(
     pokemon: PokemonUiModel,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
+    isSharedElementEnabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -186,6 +207,10 @@ fun PokemonCard(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f)
+            .graphicsLayer {
+                // Layer caching prevents unnecessary redrawing during scrolls
+                clip = true
+            }
             .retroBorder()
             .clickable { onClick() },
         shape = RectangleShape,
@@ -194,84 +219,127 @@ fun PokemonCard(
         )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            with(sharedTransitionScope) {
-                Text(
-                    text = "#${pokemon.id.padStart(4, '0')}",
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .sharedElement(
-                            sharedContentState = rememberSharedContentState(key = "pokemon-id-${pokemon.id}"),
-                            animatedVisibilityScope = animatedVisibilityScope,
-                            boundsTransform = pokemonSpriteTransform()
-                        )
-                        .skipToLookaheadSize(),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
             Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp), // Symmetric anchor padding
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                with(sharedTransitionScope) {
-                    AsyncImage(
-                        model = pokemon.imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .sharedElement(
-                                sharedContentState = rememberSharedContentState(key = "pokemon-image-${pokemon.id}"),
-                                animatedVisibilityScope = animatedVisibilityScope,
-                                boundsTransform = pokemonSpriteTransform()
-                            ),
-                        filterQuality = FilterQuality.None,
-                        contentScale = ContentScale.Fit
-                    )
-                }
-
+                // 1. Top Section: ID
                 with(sharedTransitionScope) {
                     Text(
-                        text = pokemon.name.uppercase(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        text = "#${pokemon.id.padStart(4, '0')}",
                         modifier = Modifier
-                            .padding(vertical = 4.dp)
-                            .sharedElement(
-                                sharedContentState = rememberSharedContentState(key = "pokemon-name-${pokemon.id}"),
-                                animatedVisibilityScope = animatedVisibilityScope,
-                                boundsTransform = pokemonSpriteTransform()
+                            .align(Alignment.End) // Positioned at the top right
+                            .then(
+                                if (isSharedElementEnabled) {
+                                    Modifier.sharedElement(
+                                        sharedContentState = rememberSharedContentState(key = "pokemon-id-${pokemon.id}"),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                        boundsTransform = pokemonSpriteTransform()
+                                    )
+                                } else Modifier
                             )
-                            .skipToLookaheadSize()
+                            .skipToLookaheadSize(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     )
                 }
 
+                // 2. Middle Section: Sprite (Centered in the gap)
                 Box(
-                    modifier = Modifier
-                        .height(24.dp)
-                        .fillMaxWidth(),
+                    modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (pokemon.types.isNotEmpty()) {
-                        with(sharedTransitionScope) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                modifier = Modifier.sharedElement(
-                                    sharedContentState = rememberSharedContentState(key = "pokemon-types-${pokemon.id}"),
-                                    animatedVisibilityScope = animatedVisibilityScope,
-                                    boundsTransform = pokemonSpriteTransform()
+                    with(sharedTransitionScope) {
+                        AsyncImage(
+                            model = pokemon.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(110.dp) // Increased size for overlap and heroism
+                                .then(
+                                    if (isSharedElementEnabled) {
+                                        Modifier.sharedElement(
+                                            sharedContentState = rememberSharedContentState(key = "pokemon-image-${pokemon.id}"),
+                                            animatedVisibilityScope = animatedVisibilityScope,
+                                            boundsTransform = pokemonSpriteTransform()
+                                        )
+                                    } else Modifier
+                                ),
+                            filterQuality = FilterQuality.None,
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+
+                // 3. Bottom Section: Name and Types
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val displayName = remember(pokemon.name) {
+                        if (pokemon.name.contains("-") && pokemon.name.length > 10) {
+                            pokemon.name.replace("-", "- ")
+                        } else {
+                            pokemon.name
+                        }
+                    }
+
+                    with(sharedTransitionScope) {
+                        Text(
+                            text = displayName.uppercase(),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .padding(horizontal = 2.dp)
+                                .skipToLookaheadSize()
+                                .then(
+                                    if (isSharedElementEnabled) {
+                                        Modifier.sharedElement(
+                                            sharedContentState = rememberSharedContentState(key = "pokemon-name-${pokemon.id}"),
+                                            animatedVisibilityScope = animatedVisibilityScope,
+                                            boundsTransform = pokemonSpriteTransform()
+                                        )
+                                    } else Modifier
                                 )
-                            ) {
-                                pokemon.types.forEach { type ->
-                                    TypeBadge(type = type)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .height(20.dp)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (pokemon.types.isNotEmpty()) {
+                            with(sharedTransitionScope) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.then(
+                                        if (isSharedElementEnabled) {
+                                            Modifier.sharedElement(
+                                                sharedContentState = rememberSharedContentState(key = "pokemon-types-${pokemon.id}"),
+                                                animatedVisibilityScope = animatedVisibilityScope,
+                                                boundsTransform = pokemonSpriteTransform()
+                                            )
+                                        } else Modifier
+                                    )
+                                ) {
+                                    pokemon.types.forEach { type ->
+                                        TypeBadge(type = type)
+                                    }
                                 }
                             }
+                        } else {
+                            // Maintains footer height symmetry even before types load
+                            Spacer(modifier = Modifier.height(20.dp))
                         }
                     }
                 }
@@ -284,17 +352,21 @@ fun PokemonCard(
 fun TypeBadge(type: String) {
     val colors = PokemonTypeColors.map[type.lowercase()] ?: (Color.Gray to Color.Gray)
 
-    val brush = Brush.verticalGradient(
-        0.5f to colors.first,
-        0.5f to colors.second
-    )
-
+    // PERFORMANCE: Use drawWithCache to avoid recreating the Brush object on every frame
     Surface(
         color = Color.Transparent,
         shape = RectangleShape,
         modifier = Modifier
             .width(64.dp)
-            .background(brush)
+            .drawWithCache {
+                val brush = Brush.verticalGradient(
+                    0.5f to colors.first,
+                    0.5f to colors.second
+                )
+                onDrawBehind {
+                    drawRect(brush)
+                }
+            }
             .retroBorder(width = 1.dp)
     ) {
         Text(
