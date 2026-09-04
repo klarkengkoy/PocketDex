@@ -11,6 +11,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -25,21 +26,42 @@ class PokemonViewModel(
 
     private var currentOffset = 0
     private var isFetching = false
+    private val _searchQuery = MutableStateFlow("")
+    private val _typeFilter = MutableStateFlow<Set<String>>(emptySet())
 
-    val listUiState: StateFlow<PokemonListUiState> = repository.getPokemonListFlow()
-        .map { list ->
-            // Keep offset in sync with what's actually in the DB
-            if (list.isNotEmpty() && !isFetching) {
-                currentOffset = list.size
-            }
-            
-            if (list.isEmpty()) {
-                if (currentOffset == 0) fetchNamesBatch()
-                PokemonListUiState.Loading
-            } else {
-                PokemonListUiState.Success(list)
-            }
+    val searchQuery: StateFlow<String> = _searchQuery
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = ""
+        )
+
+    val typeFilter: StateFlow<Set<String>> = _typeFilter
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptySet()
+        )
+
+    val listUiState: StateFlow<PokemonListUiState> = combine(
+        repository.getPokemonListFlow(),
+        _searchQuery,
+        _typeFilter
+    ) { list, query, typeFilter ->
+        // Keep offset in sync with what's actually in the DB
+        if (list.isNotEmpty() && !isFetching) {
+            currentOffset = list.size
         }
+
+        val filteredList = applyPokemonSearch(query, list, typeFilter)
+
+        if (list.isEmpty()) {
+            if (currentOffset == 0) fetchNamesBatch()
+            PokemonListUiState.Loading
+        } else {
+            PokemonListUiState.Success(filteredList)
+        }
+    }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -47,6 +69,13 @@ class PokemonViewModel(
         )
 
     private val _currentPokemonId = MutableStateFlow<String?>(null)
+
+    /**
+     * The ID of the Pokémon currently being focused for shared element transitions.
+     * This is updated when a card is clicked in the list, and as the user swipes
+     * through the evolution family in the detail screen.
+     */
+    val activePokemonId = MutableStateFlow<String?>(null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val detailUiState: StateFlow<PokemonDetailUiState> = _currentPokemonId
@@ -82,6 +111,23 @@ class PokemonViewModel(
         _currentPokemonId.value = id
     }
 
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query.trim()
+    }
+
+    fun toggleTypeFilter(type: String) {
+        val normalizedType = type.trim().lowercase()
+        if (normalizedType.isEmpty()) return
+
+        _typeFilter.value = _typeFilter.value.toMutableSet().apply {
+            if (contains(normalizedType)) remove(normalizedType) else add(normalizedType)
+        }
+    }
+
+    fun clearTypeFilters() {
+        _typeFilter.value = emptySet()
+    }
+
     fun loadMore() {
         fetchNamesBatch()
     }
@@ -104,6 +150,48 @@ class PokemonViewModel(
     }
 
     companion object {
+        val TYPE_FILTER_OPTIONS = listOf(
+            "fire",
+            "water",
+            "grass",
+            "electric",
+            "psychic",
+            "ice",
+            "fighting",
+            "poison",
+            "bug",
+            "rock",
+            "ground",
+            "flying",
+            "normal",
+            "ghost",
+            "dragon",
+            "fairy",
+            "dark",
+            "steel"
+        )
+
+        fun applyPokemonSearch(
+            query: String,
+            list: List<PokemonUiModel>,
+            typeFilter: Set<String> = emptySet()
+        ): List<PokemonUiModel> {
+            val normalizedQuery = query.trim().lowercase()
+            val normalizedTypeFilter = typeFilter.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+
+            return list.filter { pokemon ->
+                val matchesText = normalizedQuery.isEmpty() ||
+                    pokemon.name.lowercase().contains(normalizedQuery) ||
+                    pokemon.id.lowercase().contains(normalizedQuery) ||
+                    pokemon.types.any { it.lowercase().contains(normalizedQuery) }
+
+                val matchesType = normalizedTypeFilter.isEmpty() ||
+                    pokemon.types.any { it.lowercase() in normalizedTypeFilter }
+
+                matchesText && matchesType
+            }
+        }
+
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as PocketDexApplication)
