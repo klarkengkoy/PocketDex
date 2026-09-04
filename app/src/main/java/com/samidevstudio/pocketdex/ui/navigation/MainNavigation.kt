@@ -27,6 +27,9 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
+import com.samidevstudio.pocketdex.ui.hub.ItemsScreen
+import com.samidevstudio.pocketdex.ui.hub.MovesScreen
+import com.samidevstudio.pocketdex.ui.hub.StrategyScreen
 import com.samidevstudio.pocketdex.ui.options.OptionsScreen
 import com.samidevstudio.pocketdex.ui.options.OptionsViewModel
 import com.samidevstudio.pocketdex.ui.pokemon.PokemonDetailScreen
@@ -157,9 +160,9 @@ fun MainNavigation(
                         }
                     )
                 }
-                entry<PokedexRoute.Items> { PlaceholderScreen("THE BAG (ITEMS)") }
-                entry<PokedexRoute.Moves> { PlaceholderScreen("MOVE-DEX") }
-                entry<PokedexRoute.Strategy> { PlaceholderScreen("STRATEGY (TYPES)") }
+                entry<PokedexRoute.Items> { ItemsScreen() }
+                entry<PokedexRoute.Moves> { MovesScreen() }
+                entry<PokedexRoute.Strategy> { StrategyScreen() }
                 entry<PokedexRoute.Options> { OptionsScreen(optionsViewModel = optionsViewModel) }
                 entry<PokedexRoute.Detail> { route ->
                     val animatedVisibilityScope = LocalNavAnimatedContentScope.current
