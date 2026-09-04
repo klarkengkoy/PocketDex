@@ -2,7 +2,12 @@ package com.samidevstudio.pocketdex.ui.pokemon
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,19 +22,29 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -38,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -69,11 +85,30 @@ fun PokemonScreen(
 ) {
     val stateValue by viewModel.listUiState.collectAsState()
     val state = stateValue
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val activeTypeFilter by viewModel.typeFilter.collectAsState()
     val gridState = rememberLazyGridState()
-    
-    // PERFORMANCE: Track which Pokémon was clicked to only apply shared elements to that specific card.
-    // This reduces bound tracking from 200+ targets to just 4.
-    var clickedPokemonId by remember { mutableStateOf<String?>(null) }
+    var isSearchActive by remember { mutableStateOf(false) }
+    var isFilterMenuVisible by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val shouldShowSearchField by remember(searchQuery, isSearchActive) {
+        derivedStateOf { isSearchActive || searchQuery.isNotEmpty() }
+    }
+
+    LaunchedEffect(isFocused, searchQuery.isNotEmpty()) {
+        isSearchActive = isFocused || searchQuery.isNotEmpty()
+    }
+
+    LaunchedEffect(activeTypeFilter) {
+        if (isFilterMenuVisible) {
+            gridState.scrollToItem(0)
+        }
+    }
+
+    // PERFORMANCE: Track which Pokémon is active for shared elements.
+    // Observed from ViewModel to sync between List and Detail screens.
+    val activePokemonId by viewModel.activePokemonId.collectAsState()
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -111,11 +146,11 @@ fun PokemonScreen(
                         animatedVisibilityScope = animatedVisibilityScope,
                         onLoadMore = { viewModel.loadMore() },
                         onPokemonClick = { pokemon ->
-                            clickedPokemonId = pokemon.id
+                            viewModel.activePokemonId.value = pokemon.id
                             onPokemonClick(pokemon)
                         },
-                        topPadding = innerPadding.calculateTopPadding(),
-                        clickedPokemonId = clickedPokemonId
+                        topPadding = innerPadding.calculateTopPadding() + 54.dp,
+                        clickedPokemonId = activePokemonId
                     )
                 }
                 is PokemonListUiState.Error -> {
@@ -130,21 +165,203 @@ fun PokemonScreen(
                 }
             }
 
-            // Fixed POKEDEX Title that fades out
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = innerPadding.calculateTopPadding() + 8.dp)
-                    .graphicsLayer { alpha = titleAlpha },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "POKEDEX",
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 24.sp,
-                    color = MaterialTheme.colorScheme.onSurface
+            if (isFilterMenuVisible) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    shape = MaterialTheme.shapes.small,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            top = innerPadding.calculateTopPadding() + 4.dp,
+                            start = 16.dp,
+                            end = 16.dp,
+                            bottom = 8.dp
+                        )
+                        .retroBorder()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                isFilterMenuVisible = false
+                                viewModel.clearTypeFilters()
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear filters",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            PokemonViewModel.TYPE_FILTER_OPTIONS.forEach { option ->
+                                val normalizedOption = option.lowercase()
+                                val isSelected = activeTypeFilter.contains(normalizedOption)
+                                val colors = PokemonTypeColors.map[normalizedOption] ?: (Color.Gray to Color.Gray)
+                                val badgeBrush = Brush.verticalGradient(listOf(colors.first, colors.second))
+
+                                val chipModifier = if (isSelected) {
+                                    Modifier
+                                        .background(badgeBrush)
+                                        .border(1.dp, MaterialTheme.colorScheme.onSurface, MaterialTheme.shapes.small)
+                                } else {
+                                    Modifier
+                                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+                                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), MaterialTheme.shapes.small)
+                                }
+
+                                Surface(
+                                    color = Color.Transparent,
+                                    shape = MaterialTheme.shapes.small,
+                                    modifier = Modifier
+                                        .clip(MaterialTheme.shapes.small)
+                                        .clickable {
+                                            viewModel.toggleTypeFilter(normalizedOption)
+                                        }
+                                        .then(chipModifier)
+                                ) {
+                                    Text(
+                                        text = option.replaceFirstChar { it.titlecase() },
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (shouldShowSearchField) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { value ->
+                        viewModel.updateSearchQuery(value)
+                        isSearchActive = value.isNotEmpty() || isFocused
+                    },
+                    placeholder = {
+                        Text(
+                            text = " Search Pokemon Name or Pokemon ID",
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = innerPadding.calculateTopPadding() + 4.dp,
+                            bottom = 8.dp
+                        )
+                        .heightIn(min = 52.dp)
+                        .retroBorder(),
+                    interactionSource = interactionSource,
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                viewModel.updateSearchQuery("")
+                                isSearchActive = false
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear search",
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.8f)
+                    ),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
                 )
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            top = innerPadding.calculateTopPadding() + 4.dp,
+                            start = 16.dp,
+                            end = 16.dp,
+                            bottom = 8.dp
+                        )
+                        .graphicsLayer { alpha = titleAlpha },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "PocketDex",
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        IconButton(
+                            onClick = {
+                                isSearchActive = true
+                                isFilterMenuVisible = false
+                            },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .retroBorder()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Open search",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                isFilterMenuVisible = !isFilterMenuVisible
+                                if (isFilterMenuVisible) isSearchActive = false
+                            },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .retroBorder()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = "Filter Pokémon",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -167,7 +384,7 @@ fun PokemonGrid(
         state = gridState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            top = topPadding + 64.dp, // Match the height of the fixed header
+            top = topPadding + 16.dp,
             start = 12.dp,
             end = 12.dp,
             bottom = 200.dp
@@ -258,7 +475,8 @@ fun PokemonCard(
                             model = pokemon.imageUrl,
                             contentDescription = null,
                             modifier = Modifier
-                                .size(110.dp) // Increased size for overlap and heroism
+                                .fillMaxSize() // Use available weight-based space for maximum "Heroic" scale
+                                .padding(vertical = 8.dp) // Subtle breathing room for symmetry
                                 .then(
                                     if (isSharedElementEnabled) {
                                         Modifier.sharedElement(
