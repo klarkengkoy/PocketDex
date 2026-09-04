@@ -27,6 +27,8 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,6 +51,8 @@ import com.samidevstudio.pocketdex.ui.theme.retroBorder
 fun OptionsScreen(
     optionsViewModel: OptionsViewModel
 ) {
+    val isDarkTheme by optionsViewModel.isDarkTheme.collectAsState()
+
     // Dynamic checkered colors based on current theme surface
     val color1 = MaterialTheme.colorScheme.surface
     val isLight = color1.luminance() > 0.5f
@@ -104,7 +108,7 @@ fun OptionsScreen(
             item {
                 ToggleMenuItem(
                     label = "Dark Mode",
-                    checked = optionsViewModel.isDarkTheme,
+                    checked = isDarkTheme,
                     onCheckedChange = { optionsViewModel.toggleTheme() },
                     icon = Icons.Default.Brightness4
                 )
@@ -117,7 +121,7 @@ fun OptionsScreen(
                 MenuItem(
                     label = "Clear Cache",
                     icon = Icons.Default.DeleteSweep,
-                    onClick = { /* TODO */ }
+                    onClick = { optionsViewModel.clearCache() }
                 )
             }
             item {

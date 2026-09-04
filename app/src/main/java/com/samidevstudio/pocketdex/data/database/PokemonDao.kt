@@ -43,4 +43,10 @@ interface PokemonDao {
 
     @Query("DELETE FROM pokemon")
     suspend fun clearPokemonList()
+
+    @Query("DELETE FROM pokemon_detail")
+    suspend fun clearPokemonDetail()
+
+    @Query("DELETE FROM evolution_chains")
+    suspend fun clearEvolutionChains()
 }

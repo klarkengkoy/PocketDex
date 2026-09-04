@@ -29,6 +29,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,9 +61,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            val optionsViewModel: OptionsViewModel = viewModel()
+            val optionsViewModel: OptionsViewModel = viewModel(factory = OptionsViewModel.Factory)
             val backStack = rememberNavBackStack(PokedexRoute.List)
             val currentRoute = backStack.lastOrNull()
+            val isDarkTheme by optionsViewModel.isDarkTheme.collectAsState()
             
             val configuration = LocalConfiguration.current
             val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -72,7 +75,7 @@ class MainActivity : ComponentActivity() {
             val pokeballOffset = if (isLandscape) 40.dp else 70.dp
             val cradleRadius = if (isLandscape) 44.dp else 64.dp
 
-            PocketDexTheme(darkTheme = optionsViewModel.isDarkTheme) {
+            PocketDexTheme(darkTheme = isDarkTheme) {
                 val color1 = MaterialTheme.colorScheme.surface
                 val color2 = if (color1.luminance() > 0.5f) {
                     Color.Black.copy(alpha = 0.05f).compositeOver(color1)
