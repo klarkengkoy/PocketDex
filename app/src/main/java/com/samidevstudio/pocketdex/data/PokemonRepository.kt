@@ -25,6 +25,7 @@ interface PokemonRepository {
     suspend fun syncPokemonDetail(id: String)
     suspend fun syncEvolutionChain(chainId: String)
     suspend fun backfillMissingTypes()
+    suspend fun clearCache()
 }
 
 class DefaultPokemonRepository(
@@ -33,6 +34,8 @@ class DefaultPokemonRepository(
 ) : PokemonRepository {
 
     private var isBackfilling = false
+    private val inFlightDetailSyncs = mutableSetOf<String>()
+    private val inFlightListFetches = mutableSetOf<Pair<Int, Int>>()
 
     override fun getPokemonListFlow(): Flow<List<PokemonUiModel>> {
         return pokemonDao.getPokemonList(1000, 0).map { list -> 
@@ -41,6 +44,10 @@ class DefaultPokemonRepository(
     }
     
     override suspend fun fetchPokemonList(offset: Int, limit: Int) {
+        val fetchKey = offset to limit
+        if (inFlightListFetches.contains(fetchKey)) return
+        inFlightListFetches.add(fetchKey)
+
         try {
             // Check if we already have these items in DB to avoid redundant network calls
             val count = pokemonDao.getPokemonCountInRange(offset, limit)
@@ -58,6 +65,8 @@ class DefaultPokemonRepository(
             pokemonDao.insertPokemonList(newItems.map { it.toEntity() })
         } catch (_: Exception) {
             // Handle error
+        } finally {
+            inFlightListFetches.remove(fetchKey)
         }
     }
 
@@ -74,6 +83,9 @@ class DefaultPokemonRepository(
     }
 
     override suspend fun syncPokemonDetail(id: String) {
+        if (inFlightDetailSyncs.contains(id)) return
+        inFlightDetailSyncs.add(id)
+
         try {
             // Check if we already have the detail in DB
             val existing = pokemonDao.getPokemonDetail(id)
@@ -102,6 +114,8 @@ class DefaultPokemonRepository(
             }
         } catch (_: Exception) {
             // Handle error
+        } finally {
+            inFlightDetailSyncs.remove(id)
         }
     }
 
@@ -159,6 +173,12 @@ class DefaultPokemonRepository(
         } finally {
             isBackfilling = false
         }
+    }
+
+    override suspend fun clearCache() {
+        pokemonDao.clearPokemonList()
+        pokemonDao.clearPokemonDetail()
+        pokemonDao.clearEvolutionChains()
     }
 
     private fun flattenEvolutionChain(chain: ChainLink): List<EvolutionNode> {
