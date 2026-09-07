@@ -1,0 +1,118 @@
+package com.samidevstudio.pocketdex.ui.moves
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.samidevstudio.pocketdex.ui.theme.retroBorder
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MoveListScreen(
+    viewModel: MoveViewModel,
+    onMoveClick: (MoveListModel) -> Unit
+) {
+    val state by viewModel.listUiState.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "MOVE-DEX",
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 26.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = viewModel::updateSearchQuery,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search moves...", fontFamily = FontFamily.Monospace) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            singleLine = true
+        )
+
+        when (val current = state) {
+            is MoveListUiState.Loading -> {
+                Text(
+                    text = "LOADING...",
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            is MoveListUiState.Error -> {
+                Text(
+                    text = "ERROR: ${current.message}",
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            is MoveListUiState.Success -> {
+                if (current.moves.isEmpty()) {
+                    Text(
+                        text = "No moves found.",
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 180.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        itemsIndexed(current.moves, key = { _, move -> move.id }) { index, move ->
+                            // Trigger pre-fetch when we are 10 items from the bottom.
+                            if (index >= current.moves.size - 10) {
+                                viewModel.loadMore()
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .retroBorder()
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                                    .clickable { onMoveClick(move) }
+                                    .padding(14.dp)
+                            ) {
+                                Text(
+                                    text = move.name.replace('-', ' ').uppercase(),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
