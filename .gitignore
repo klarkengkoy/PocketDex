@@ -20,3 +20,6 @@ DEVELOPER_DIARY.md
 # Agent and Artifact metadata
 .artifacts/
 .agent/
+
+# Keep local Copilot instructions untracked
+.github/
