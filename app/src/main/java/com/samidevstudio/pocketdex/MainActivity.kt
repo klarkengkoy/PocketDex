@@ -21,16 +21,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Backpack
-import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,14 +37,13 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.rememberNavBackStack
 import com.samidevstudio.pocketdex.ui.components.PokeballCanvas
 import com.samidevstudio.pocketdex.ui.navigation.MainNavigation
 import com.samidevstudio.pocketdex.ui.navigation.PokedexRoute
-import com.samidevstudio.pocketdex.ui.options.OptionsViewModel
 import com.samidevstudio.pocketdex.ui.theme.PocketDexTheme
 import com.samidevstudio.pocketdex.ui.theme.RetroStyles
 import com.samidevstudio.pocketdex.ui.theme.retroBackground
@@ -61,10 +58,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            val optionsViewModel: OptionsViewModel = viewModel(factory = OptionsViewModel.Factory)
             val backStack = rememberNavBackStack(PokedexRoute.List)
             val currentRoute = backStack.lastOrNull()
-            val isDarkTheme by optionsViewModel.isDarkTheme.collectAsState()
+            val isDarkTheme = isSystemInDarkTheme()
             
             val configuration = LocalConfiguration.current
             val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -101,7 +97,6 @@ class MainActivity : ComponentActivity() {
                             // 1. Main Navigation Layer
                             MainNavigation(
                                 backStack = backStack,
-                                optionsViewModel = optionsViewModel,
                                 onBack = {
                                     if (backStack.size > 1) {
                                         backStack.removeAt(backStack.lastIndex)
@@ -134,19 +129,19 @@ class MainActivity : ComponentActivity() {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         NavTabItem(
-                                            icon = Icons.Default.Backpack,
-                                            selected = currentRoute is PokedexRoute.Items,
+                                            icon = Icons.Default.SportsMartialArts,
+                                            selected = currentRoute is PokedexRoute.Moves || currentRoute is PokedexRoute.MoveDetail,
                                             onClick = { 
                                                 backStack.clear()
-                                                backStack.add(PokedexRoute.Items) 
+                                                backStack.add(PokedexRoute.Moves) 
                                             }
                                         )
                                         NavTabItem(
                                             icon = Icons.Default.AutoStories,
-                                            selected = currentRoute is PokedexRoute.Moves,
+                                            selected = currentRoute is PokedexRoute.Types || currentRoute is PokedexRoute.TypeDetail,
                                             onClick = { 
                                                 backStack.clear()
-                                                backStack.add(PokedexRoute.Moves) 
+                                                backStack.add(PokedexRoute.Types) 
                                             }
                                         )
                                         
@@ -154,19 +149,19 @@ class MainActivity : ComponentActivity() {
                                         Box(modifier = Modifier.size(pokeballSize))
 
                                         NavTabItem(
-                                            icon = Icons.Default.Psychology,
-                                            selected = currentRoute is PokedexRoute.Strategy,
+                                            icon = Icons.Default.Backpack,
+                                            selected = currentRoute is PokedexRoute.Items || currentRoute is PokedexRoute.ItemDetail,
                                             onClick = { 
                                                 backStack.clear()
-                                                backStack.add(PokedexRoute.Strategy) 
+                                                backStack.add(PokedexRoute.Items) 
                                             }
                                         )
                                         NavTabItem(
-                                            icon = Icons.Default.Settings,
-                                            selected = currentRoute is PokedexRoute.Options,
+                                            icon = Icons.Default.Groups,
+                                            selected = currentRoute is PokedexRoute.Team || currentRoute is PokedexRoute.TeamPokemonSelect,
                                             onClick = { 
                                                 backStack.clear()
-                                                backStack.add(PokedexRoute.Options) 
+                                                backStack.add(PokedexRoute.Team) 
                                             }
                                         )
                                     }
