@@ -39,4 +39,34 @@ interface PokeApiService {
     suspend fun getEvolutionChain(
         @Url url: String
     ): EvolutionChainResponse
+
+    @GET("move")
+    suspend fun getMoveList(
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0
+    ): MoveListResponse
+
+    @GET("move/{id}")
+    suspend fun getMoveDetail(
+        @Path("id") id: String
+    ): MoveDetail
+
+    @GET("type")
+    suspend fun getTypeList(): TypeListResponse
+
+    @GET("type/{id}")
+    suspend fun getTypeDetail(
+        @Path("id") id: String
+    ): TypeDetail
+
+    @GET("item")
+    suspend fun getItemList(
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0
+    ): ItemListResponse
+
+    @GET("item/{id}")
+    suspend fun getItemDetail(
+        @Path("id") id: String
+    ): ItemDetail
 }
