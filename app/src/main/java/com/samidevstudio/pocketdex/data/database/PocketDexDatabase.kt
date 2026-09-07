@@ -8,16 +8,26 @@ import androidx.room.TypeConverters
 
 @Database(
     entities = [
-        PokemonEntity::class, 
-        PokemonDetailEntity::class, 
-        EvolutionChainEntity::class
-    ], 
-    version = 2, 
+        PokemonEntity::class,
+        PokemonDetailEntity::class,
+        EvolutionChainEntity::class,
+        MoveListEntity::class,
+        MoveDetailEntity::class,
+        ItemListEntity::class,
+        ItemDetailEntity::class,
+        TypeEntity::class,
+        TeamMemberEntity::class
+    ],
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(PokemonConverters::class)
 abstract class PocketDexDatabase : RoomDatabase() {
     abstract fun pokemonDao(): PokemonDao
+    abstract fun moveDao(): MoveDao
+    abstract fun itemDao(): ItemDao
+    abstract fun typeDao(): TypeDao
+    abstract fun teamDao(): TeamDao
 
     companion object {
         @Volatile
