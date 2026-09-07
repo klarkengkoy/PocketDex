@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -27,14 +28,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -89,7 +87,6 @@ fun AnimatedLoadingText() {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PokemonDetailScreen(
     pokemonId: String,
@@ -131,57 +128,59 @@ fun PokemonDetailScreen(
         // STABLE CONTAINER: Persist the last successful Pokémon data to prevent the screen
         // from blinking or emptying during loading states.
         var displayPokemon by remember { mutableStateOf<PokemonDetailModel?>(null) }
+        var currentSwipedId by remember(pokemonId) { mutableStateOf(pokemonId) }
         
         LaunchedEffect(state) {
             if (state is PokemonDetailUiState.Success) {
                 lastValidEvolutions = state.pokemon.evolutions
                 displayPokemon = state.pokemon
+                currentSwipedId = state.pokemon.id
             }
         }
 
-        val currentDisplayId = remember(state, pokemonId) {
-            if (state is PokemonDetailUiState.Success) {
-                state.pokemon.id
-            } else {
-                pokemonId
-            }
+        val currentDisplayId = if (state is PokemonDetailUiState.Success) {
+            state.pokemon.id
+        } else {
+            currentSwipedId
         }
+        val safeTopPadding = 24.dp
 
         Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        with(sharedTransitionScope) {
-                            Text(
-                                text = pokemonName.uppercase(),
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier
-                                    .sharedElement(
-                                        sharedContentState = rememberSharedContentState(key = "pokemon-name-$pokemonId"),
-                                        animatedVisibilityScope = animatedVisibilityScope,
-                                        boundsTransform = pokemonSpriteTransform()
-                                    )
-                                    .skipToLookaheadSize()
-                            )
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { if (!isBackingOut) isBackingOut = true }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-                )
-            },
             containerColor = Color.Transparent,
             modifier = Modifier.fillMaxSize()
         ) { innerPadding ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = safeTopPadding + innerPadding.calculateTopPadding() + 8.dp, start = 8.dp, end = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { if (!isBackingOut) isBackingOut = true }) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                with(sharedTransitionScope) {
+                    Text(
+                        text = pokemonName.uppercase(),
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .weight(1f)
+                            .sharedElement(
+                                sharedContentState = rememberSharedContentState(key = "pokemon-name-$currentDisplayId"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                boundsTransform = pokemonSpriteTransform()
+                            )
+                            .skipToLookaheadSize()
+                    )
+                }
+            }
+
             val density = LocalDensity.current
             val windowInfo = LocalWindowInfo.current
             val screenWidth = with(density) { windowInfo.containerSize.width.toDp() }
@@ -192,7 +191,7 @@ fun PokemonDetailScreen(
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .padding(
-                        top = innerPadding.calculateTopPadding() + 16.dp,
+                        top = safeTopPadding + innerPadding.calculateTopPadding() + 16.dp,
                         start = 16.dp,
                         end = 16.dp,
                         bottom = 200.dp
@@ -251,7 +250,11 @@ fun PokemonDetailScreen(
                             isBackingOut = isBackingOut,
                             isTransitionFinished = isTransitionFinished,
                             onBackingOutChange = { isBackingOut = it },
-                            onPokemonChange = { viewModel.loadPokemonDetail(it) },
+                            onPokemonChange = { id ->
+                                currentSwipedId = id
+                                viewModel.loadPokemonDetail(id)
+                                viewModel.activePokemonId.value = id
+                            },
                             onBack = onBack
                         )
                     }
@@ -274,7 +277,7 @@ fun PokemonDetailScreen(
                                     modifier = Modifier
                                         .padding(bottom = 16.dp)
                                         .sharedElement(
-                                            sharedContentState = rememberSharedContentState(key = "pokemon-types-$pokemonId"),
+                                            sharedContentState = rememberSharedContentState(key = "pokemon-types-$currentDisplayId"),
                                             animatedVisibilityScope = animatedVisibilityScope,
                                             boundsTransform = pokemonSpriteTransform()
                                         )

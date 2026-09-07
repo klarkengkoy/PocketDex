@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -110,6 +111,8 @@ fun PokemonScreen(
     // Observed from ViewModel to sync between List and Detail screens.
     val activePokemonId by viewModel.activePokemonId.collectAsState()
 
+    val safeTopPadding = 24.dp
+
     Scaffold(
         containerColor = Color.Transparent,
         modifier = Modifier.fillMaxSize()
@@ -149,7 +152,7 @@ fun PokemonScreen(
                             viewModel.activePokemonId.value = pokemon.id
                             onPokemonClick(pokemon)
                         },
-                        topPadding = innerPadding.calculateTopPadding() + 54.dp,
+                        topPadding = safeTopPadding + innerPadding.calculateTopPadding() + 54.dp,
                         clickedPokemonId = activePokemonId
                     )
                 }
@@ -174,7 +177,7 @@ fun PokemonScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            top = innerPadding.calculateTopPadding() + 4.dp,
+                            top = safeTopPadding + innerPadding.calculateTopPadding() + 4.dp,
                             start = 16.dp,
                             end = 16.dp,
                             bottom = 8.dp
@@ -268,7 +271,7 @@ fun PokemonScreen(
                         .padding(
                             start = 16.dp,
                             end = 16.dp,
-                            top = innerPadding.calculateTopPadding() + 4.dp,
+                            top = safeTopPadding + innerPadding.calculateTopPadding() + 4.dp,
                             bottom = 8.dp
                         )
                         .heightIn(min = 52.dp)
@@ -308,7 +311,7 @@ fun PokemonScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            top = innerPadding.calculateTopPadding() + 4.dp,
+                           top = safeTopPadding + innerPadding.calculateTopPadding() + 4.dp,
                             start = 16.dp,
                             end = 16.dp,
                             bottom = 8.dp

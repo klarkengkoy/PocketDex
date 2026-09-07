@@ -76,10 +76,10 @@ fun EvolutionCarousel(
 
         LaunchedEffect(isBackingOut) {
             if (isBackingOut) {
-                val originIndex = evolutions.indexOfFirst { it.id == pokemonId }
-                if (originIndex != -1 && pagerState.currentPage != originIndex) {
-                    pagerState.animateScrollToPage(originIndex)
-                }
+                // If the user swiped to a different evolution, we update the active shared element
+                // in the ViewModel so the return flight finds the correct grid slot in the list.
+                // We no longer force a scroll back to the original clicked Pokémon, as flying 
+                // back from the current "Hero" provides a much smoother and expected transition.
                 onBack() 
             }
         }
@@ -156,11 +156,11 @@ fun EvolutionCarousel(
                                 .size(240.dp)
                                 .padding(16.dp)
                                 .then(
-                                    // RE-ENABLE shared element tracking if we are currently backing out.
-                                    // This allows the "return flight" animation to find its target.
-                                    if (node.id == pokemonId && (!isTransitionFinished || isBackingOut)) {
+                                    // RE-ENABLE shared element tracking if we are currently backing out or if it's the hero.
+                                    // We use node.id to ensure the return flight matches the correct card in the grid.
+                                    if (node.id == currentDisplayId && (!isTransitionFinished || isBackingOut)) {
                                         Modifier.sharedElement(
-                                            sharedContentState = rememberSharedContentState(key = "pokemon-image-$pokemonId"),
+                                            sharedContentState = rememberSharedContentState(key = "pokemon-image-${node.id}"),
                                             animatedVisibilityScope = animatedVisibilityScope,
                                             boundsTransform = pokemonSpriteTransform()
                                         )
