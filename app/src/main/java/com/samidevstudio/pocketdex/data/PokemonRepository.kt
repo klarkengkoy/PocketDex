@@ -33,6 +33,21 @@ class DefaultPokemonRepository(
     private val pokemonDao: PokemonDao
 ) : PokemonRepository {
 
+    companion object {
+        const val INITIAL_BACKOFF_MS = 1000L
+        const val MAX_BACKOFF_MS = 60_000L
+
+        internal fun calculateBackoffDelay(previousDelayMs: Long): Long {
+            if (previousDelayMs <= 0) return INITIAL_BACKOFF_MS
+            return (previousDelayMs * 2).coerceAtMost(MAX_BACKOFF_MS)
+        }
+
+        internal fun extractChainIdFromUrl(url: String?): String {
+            if (url.isNullOrBlank()) return ""
+            return url.trimEnd('/').split('/').lastOrNull { it.isNotBlank() } ?: ""
+        }
+    }
+
     private var isBackfilling = false
     private val inFlightDetailSyncs = mutableSetOf<String>()
     private val inFlightListFetches = mutableSetOf<Pair<Int, Int>>()
@@ -49,11 +64,12 @@ class DefaultPokemonRepository(
         inFlightListFetches.add(fetchKey)
 
         try {
-            // Check if we already have these items in DB to avoid redundant network calls
             val count = pokemonDao.getPokemonCountInRange(offset, limit)
-            if (count >= limit) return // Already have this batch
+            if (count >= limit) return
 
             val response = apiService.getPokemonList(offset = offset, limit = limit)
+            if (response.results.isEmpty()) return
+
             val newItems = response.results.map { item ->
                 PokemonUiModel(
                     id = item.id,
@@ -87,11 +103,10 @@ class DefaultPokemonRepository(
         inFlightDetailSyncs.add(id)
 
         try {
-            // Check if we already have the detail in DB
             val existing = pokemonDao.getPokemonDetail(id)
             if (existing != null && existing.chainId.isNotEmpty()) {
                 val existingChain = pokemonDao.getEvolutionChain(existing.chainId)
-                if (existingChain != null) return // Already fully synced
+                if (existingChain != null) return
             }
 
             val networkDetail = apiService.getPokemonDetail(id)
@@ -99,13 +114,15 @@ class DefaultPokemonRepository(
             val flavorText = speciesResponse.flavorTextEntries
                 .firstOrNull { it.language.name == "en" }
                 ?.flavorText?.replace("\n", " ")?.replace("\u000c", " ") ?: ""
-            
-            val chainId = speciesResponse.evolutionChain.url.trimEnd('/').split('/').last()
-            
+
+            val chainId = extractChainIdFromUrl(speciesResponse.evolutionChain.url)
+            if (chainId.isBlank()) {
+                pokemonDao.insertPokemonDetail(networkDetail.toPokemonDetailModel(flavorText, emptyList(), "").toEntity(id, ""))
+                return
+            }
+
             val detailModel = networkDetail.toPokemonDetailModel(flavorText, emptyList(), chainId)
             pokemonDao.insertPokemonDetail(detailModel.toEntity(id, chainId))
-
-            // Update the types in the main list table so they appear on the home screen
             pokemonDao.updatePokemonTypes(id, detailModel.types)
 
             val localChain = pokemonDao.getEvolutionChain(chainId)
@@ -138,37 +155,37 @@ class DefaultPokemonRepository(
     override suspend fun backfillMissingTypes() {
         if (isBackfilling) return
         isBackfilling = true
-        
+
         try {
             var backoffMs = 0L
-            
+
             while (true) {
                 val ids = pokemonDao.getPokemonIdsMissingTypes()
                 if (ids.isEmpty()) break
-                
+
+                var hitRateLimit = false
                 for (id in ids) {
                     try {
                         if (backoffMs > 0) {
                             delay(backoffMs.milliseconds)
                         }
-                        
+
                         syncPokemonDetail(id)
-                        
-                        // Reset backoff on success
                         backoffMs = 0
                     } catch (e: HttpException) {
                         if (e.code() == 429) {
-                            backoffMs = (backoffMs * 2).coerceAtLeast(1000L).coerceAtMost(60000L)
-                            break 
-                        } else {
-                            continue
+                            backoffMs = calculateBackoffDelay(backoffMs)
+                            hitRateLimit = true
+                            break
                         }
+                        continue
                     } catch (_: Exception) {
                         continue
                     }
                 }
-                
-                if (backoffMs == 0L) delay(100.milliseconds)
+
+                if (hitRateLimit && backoffMs >= MAX_BACKOFF_MS) break
+                if (!hitRateLimit && backoffMs == 0L) delay(100.milliseconds)
             }
         } finally {
             isBackfilling = false

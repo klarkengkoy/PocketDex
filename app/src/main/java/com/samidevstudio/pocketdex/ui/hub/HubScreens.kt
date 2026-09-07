@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,17 +26,19 @@ import com.samidevstudio.pocketdex.ui.theme.retroBorder
 private data class HubItem(
     val title: String,
     val detail: String,
-    val accent: Color
+    val accent: Color,
+    val tag: String? = null
 )
 
 @Composable
 fun ItemsScreen() {
     HubContentScreen(
         title = "THE BAG",
+        subtitle = "Trainer essentials and quick-use tools.",
         items = listOf(
-            HubItem("Potion", "Restore 20 HP from a fully stocked trainer bag.", Color(0xFF2E7D32)),
-            HubItem("Great Ball", "Improved capture odds for elusive wild Pokémon.", Color(0xFF1565C0)),
-            HubItem("Revive", "Bring a fainted partner back to the fight.", Color(0xFF6D4C41))
+            HubItem("Potion", "Restore 20 HP from a fully stocked trainer bag.", Color(0xFF2E7D32), "heal"),
+            HubItem("Great Ball", "Improved capture odds for elusive wild Pokémon.", Color(0xFF1565C0), "capture"),
+            HubItem("Revive", "Bring a fainted partner back to the fight.", Color(0xFF6D4C41), "support")
         )
     )
 }
@@ -44,10 +47,11 @@ fun ItemsScreen() {
 fun MovesScreen() {
     HubContentScreen(
         title = "MOVE-DEX",
+        subtitle = "Strong picks, high impact, and sharp coverage.",
         items = listOf(
-            HubItem("Thunderbolt", "A high-power electric attack with strong coverage.", Color(0xFFF9A825)),
-            HubItem("Moonblast", "A graceful fairy move with solid damage output.", Color(0xFFAB47BC)),
-            HubItem("Earthquake", "Classic ground damage that hits many foes.", Color(0xFF8D6E63))
+            HubItem("Thunderbolt", "A high-power electric attack with strong coverage.", Color(0xFFF9A825), "electric"),
+            HubItem("Moonblast", "A graceful fairy move with solid damage output.", Color(0xFFAB47BC), "fairy"),
+            HubItem("Earthquake", "Classic ground damage that hits many foes.", Color(0xFF8D6E63), "ground")
         )
     )
 }
@@ -56,10 +60,11 @@ fun MovesScreen() {
 fun StrategyScreen() {
     HubContentScreen(
         title = "STRATEGY",
+        subtitle = "The big picture behind every battle plan.",
         items = listOf(
-            HubItem("Type Matchups", "Use matchup charts to plan strong counters.", Color(0xFFE3350D)),
-            HubItem("Offense Balance", "Pair attack power with coverage to pressure teams.", Color(0xFFEF6C00)),
-            HubItem("Defensive Pairing", "Build teams with anti-sweep coverage and recovery.", Color(0xFF00897B))
+            HubItem("Type Matchups", "Use matchup charts to plan strong counters.", Color(0xFFE3350D), "battle"),
+            HubItem("Offense Balance", "Pair attack power with coverage to pressure teams.", Color(0xFFEF6C00), "tempo"),
+            HubItem("Defensive Pairing", "Build teams with anti-sweep coverage and recovery.", Color(0xFF00897B), "team")
         )
     )
 }
@@ -67,6 +72,7 @@ fun StrategyScreen() {
 @Composable
 private fun HubContentScreen(
     title: String,
+    subtitle: String,
     items: List<HubItem>
 ) {
     Box(
@@ -77,7 +83,7 @@ private fun HubContentScreen(
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
                 text = title,
@@ -88,34 +94,83 @@ private fun HubContentScreen(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 180.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(items) { item ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .retroBorder()
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-                            .padding(16.dp)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = item.title.uppercase(),
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                color = item.accent,
-                                fontSize = 18.sp
-                            )
-                            Text(
-                                text = item.detail,
-                                fontFamily = FontFamily.Monospace,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                                fontSize = 12.sp,
-                                lineHeight = 18.sp
-                            )
+            Text(
+                text = subtitle,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+
+            if (items.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .retroBorder()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "NO DATA YET",
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 18.sp
+                        )
+                        Text(
+                            text = "Check back soon for more notes.",
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 180.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(items) { item ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .retroBorder()
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                                .padding(16.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = item.title.uppercase(),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        color = item.accent,
+                                        fontSize = 18.sp
+                                    )
+                                    if (!item.tag.isNullOrBlank()) {
+                                        Text(
+                                            text = item.tag.uppercase(),
+                                            fontFamily = FontFamily.Monospace,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = item.detail,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                                    fontSize = 12.sp,
+                                    lineHeight = 18.sp
+                                )
+                            }
                         }
                     }
                 }

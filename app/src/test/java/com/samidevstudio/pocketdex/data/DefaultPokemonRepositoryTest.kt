@@ -44,6 +44,25 @@ class DefaultPokemonRepositoryTest {
         assertEquals(1, service.detailCallCount)
     }
 
+    @Test
+    fun fetchPokemonList_skipsEmptyResults() = runBlocking {
+        val service = EmptyPokemonListService()
+        val dao = CountingPokemonDao()
+        val repository = DefaultPokemonRepository(apiService = service, pokemonDao = dao)
+
+        repository.fetchPokemonList(offset = 0, limit = 2)
+
+        assertEquals(0, dao.insertCount)
+    }
+
+    @Test
+    fun calculateBackoffDelay_capsAtOneMinute() {
+        assertEquals(1000L, DefaultPokemonRepository.calculateBackoffDelay(0))
+        assertEquals(2000L, DefaultPokemonRepository.calculateBackoffDelay(1000))
+        assertEquals(60000L, DefaultPokemonRepository.calculateBackoffDelay(30000))
+        assertEquals(60000L, DefaultPokemonRepository.calculateBackoffDelay(60000))
+    }
+
     private class FakePokeApiService : PokeApiService {
         var listCallCount = 0
         var detailCallCount = 0
@@ -99,6 +118,35 @@ class DefaultPokemonRepositoryTest {
                 )
             )
         }
+    }
+
+    private class EmptyPokemonListService : PokeApiService {
+        override suspend fun getPokemonList(limit: Int, offset: Int): PokemonResponse {
+            return PokemonResponse(results = emptyList())
+        }
+
+        override suspend fun getPokemonDetail(id: String): PokemonDetail = throw NotImplementedError()
+        override suspend fun getPokemonSpecies(id: String): PokemonSpeciesResponse = throw NotImplementedError()
+        override suspend fun getEvolutionChain(url: String): EvolutionChainResponse = throw NotImplementedError()
+    }
+
+    private class CountingPokemonDao : PokemonDao {
+        var insertCount = 0
+
+        override fun getPokemonList(limit: Int, offset: Int): Flow<List<PokemonEntity>> = flowOf(emptyList())
+        override suspend fun getPokemonCountInRange(offset: Int, limit: Int): Int = 0
+        override suspend fun insertPokemonList(pokemon: List<PokemonEntity>) { insertCount += 1 }
+        override suspend fun getPokemonDetail(id: String): PokemonDetailEntity? = null
+        override fun getPokemonDetailFlow(id: String): Flow<PokemonDetailEntity?> = flowOf(null)
+        override suspend fun insertPokemonDetail(pokemonDetail: PokemonDetailEntity) = Unit
+        override suspend fun updatePokemonTypes(id: String, types: List<String>) = Unit
+        override suspend fun getPokemonIdsMissingTypes(): List<String> = emptyList()
+        override suspend fun getEvolutionChain(id: String): EvolutionChainEntity? = null
+        override fun getEvolutionChainFlow(id: String): Flow<EvolutionChainEntity?> = flowOf(null)
+        override suspend fun insertEvolutionChain(chain: EvolutionChainEntity) = Unit
+        override suspend fun clearPokemonList() = Unit
+        override suspend fun clearPokemonDetail() = Unit
+        override suspend fun clearEvolutionChains() = Unit
     }
 
     private class FakePokemonDao : PokemonDao {
