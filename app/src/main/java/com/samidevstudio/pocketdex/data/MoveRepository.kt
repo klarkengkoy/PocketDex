@@ -7,6 +7,7 @@ import com.samidevstudio.pocketdex.ui.moves.MoveDetailModel
 import com.samidevstudio.pocketdex.ui.moves.MoveListModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
 interface MoveRepository {
     fun getMoveListFlow(limit: Int, offset: Int): Flow<List<MoveListModel>>
@@ -16,8 +17,8 @@ interface MoveRepository {
     suspend fun syncMoveDetail(id: String)
 }
 
-class DefaultMoveRepository(
-    private val apiService: PokeApiService = RetrofitClient.pokeApiService,
+class DefaultMoveRepository @Inject constructor(
+    private val apiService: PokeApiService,
     private val moveDao: MoveDao
 ) : MoveRepository {
 

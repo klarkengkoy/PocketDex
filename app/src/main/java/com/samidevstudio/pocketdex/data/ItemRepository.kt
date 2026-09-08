@@ -7,6 +7,7 @@ import com.samidevstudio.pocketdex.ui.items.ItemDetailModel
 import com.samidevstudio.pocketdex.ui.items.ItemListModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
 interface ItemRepository {
     fun getItemListFlow(limit: Int, offset: Int): Flow<List<ItemListModel>>
@@ -16,8 +17,8 @@ interface ItemRepository {
     suspend fun syncItemDetail(id: String)
 }
 
-class DefaultItemRepository(
-    private val apiService: PokeApiService = RetrofitClient.pokeApiService,
+class DefaultItemRepository @Inject constructor(
+    private val apiService: PokeApiService,
     private val itemDao: ItemDao
 ) : ItemRepository {
 

@@ -1,5 +1,6 @@
 package com.samidevstudio.pocketdex.data
 
+import android.util.Log
 import com.samidevstudio.pocketdex.data.database.EvolutionChainEntity
 import com.samidevstudio.pocketdex.data.database.PokemonDao
 import com.samidevstudio.pocketdex.data.database.toDetailModel
@@ -13,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
+import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
 interface PokemonRepository {
@@ -28,8 +30,8 @@ interface PokemonRepository {
     suspend fun clearCache()
 }
 
-class DefaultPokemonRepository(
-    private val apiService: PokeApiService = RetrofitClient.pokeApiService,
+class DefaultPokemonRepository @Inject constructor(
+    private val apiService: PokeApiService,
     private val pokemonDao: PokemonDao
 ) : PokemonRepository {
 
@@ -79,8 +81,8 @@ class DefaultPokemonRepository(
                 )
             }
             pokemonDao.insertPokemonList(newItems.map { it.toEntity() })
-        } catch (_: Exception) {
-            // Handle error
+        } catch (e: Exception) {
+            Log.e("PokemonRepository", "Error fetching pokemon list", e)
         } finally {
             inFlightListFetches.remove(fetchKey)
         }
@@ -129,8 +131,8 @@ class DefaultPokemonRepository(
             if (localChain == null) {
                 syncEvolutionChain(chainId)
             }
-        } catch (_: Exception) {
-            // Handle error
+        } catch (e: Exception) {
+            Log.e("PokemonRepository", "Error syncing pokemon detail for $id", e)
         } finally {
             inFlightDetailSyncs.remove(id)
         }
@@ -147,8 +149,8 @@ class DefaultPokemonRepository(
             pokemonDao.insertEvolutionChain(
                 EvolutionChainEntity(id = chainId, evolutions = evolutions)
             )
-        } catch (_: Exception) {
-            // Handle error
+        } catch (e: Exception) {
+            Log.e("PokemonRepository", "Error syncing evolution chain $chainId", e)
         }
     }
 

@@ -6,6 +6,7 @@ import com.samidevstudio.pocketdex.ui.team.MAX_TEAM_SIZE
 import com.samidevstudio.pocketdex.ui.team.TeamMemberModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
 interface TeamRepository {
     fun getTeamFlow(): Flow<List<TeamMemberModel>>
@@ -22,7 +23,7 @@ interface TeamRepository {
     suspend fun remove(position: Int)
 }
 
-class DefaultTeamRepository(
+class DefaultTeamRepository @Inject constructor(
     private val teamDao: TeamDao
 ) : TeamRepository {
 

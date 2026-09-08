@@ -5,6 +5,7 @@ import com.samidevstudio.pocketdex.data.database.TypeEntity
 import com.samidevstudio.pocketdex.domain.TypeRelations
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
 interface TypeRepository {
     fun getAllTypesFlow(): Flow<List<TypeRelations>>
@@ -12,8 +13,8 @@ interface TypeRepository {
     suspend fun syncAllTypes()
 }
 
-class DefaultTypeRepository(
-    private val apiService: PokeApiService = RetrofitClient.pokeApiService,
+class DefaultTypeRepository @Inject constructor(
+    private val apiService: PokeApiService,
     private val typeDao: TypeDao
 ) : TypeRepository {
 
