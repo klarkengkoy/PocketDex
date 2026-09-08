@@ -1,13 +1,10 @@
 package com.samidevstudio.pocketdex.ui.types
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import com.samidevstudio.pocketdex.PocketDexApplication
 import com.samidevstudio.pocketdex.data.TypeRepository
 import com.samidevstudio.pocketdex.domain.TypeEffectivenessCalculator
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,8 +14,10 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class TypeViewModel(
+@HiltViewModel
+class TypeViewModel @Inject constructor(
     private val repository: TypeRepository
 ) : ViewModel() {
 
@@ -62,14 +61,5 @@ class TypeViewModel(
 
     fun loadTypeDetail(name: String?) {
         _currentTypeName.value = name
-    }
-
-    companion object {
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                val application = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as PocketDexApplication)
-                TypeViewModel(repository = application.container.typeRepository)
-            }
-        }
     }
 }

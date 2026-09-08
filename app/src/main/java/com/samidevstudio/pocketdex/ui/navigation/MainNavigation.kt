@@ -15,7 +15,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
@@ -125,12 +125,11 @@ fun MainNavigation(
     modifier: Modifier = Modifier,
     onBack: () -> Unit
 ) {
-    // FIX: Pass the Factory to ensure the ViewModel is created with its required repository.
-    val pokemonViewModel: PokemonViewModel = viewModel(factory = PokemonViewModel.Factory)
-    val moveViewModel: MoveViewModel = viewModel(factory = MoveViewModel.Factory)
-    val typeViewModel: TypeViewModel = viewModel(factory = TypeViewModel.Factory)
-    val itemViewModel: ItemViewModel = viewModel(factory = ItemViewModel.Factory)
-    val teamViewModel: TeamViewModel = viewModel(factory = TeamViewModel.Factory)
+    val pokemonViewModel: PokemonViewModel = hiltViewModel()
+    val moveViewModel: MoveViewModel = hiltViewModel()
+    val typeViewModel: TypeViewModel = hiltViewModel()
+    val itemViewModel: ItemViewModel = hiltViewModel()
+    val teamViewModel: TeamViewModel = hiltViewModel()
 
     SharedTransitionLayout(modifier = modifier) {
         NavDisplay(

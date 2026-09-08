@@ -1,12 +1,9 @@
 package com.samidevstudio.pocketdex.ui.items
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import com.samidevstudio.pocketdex.PocketDexApplication
 import com.samidevstudio.pocketdex.data.ItemRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,11 +14,13 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 private const val PAGE_SIZE = 60
 private const val MAX_CACHED = 3000
 
-class ItemViewModel(
+@HiltViewModel
+class ItemViewModel @Inject constructor(
     private val repository: ItemRepository
 ) : ViewModel() {
 
@@ -99,15 +98,6 @@ class ItemViewModel(
                 // Handled by leaving the list as-is; user can retry via loadMore.
             } finally {
                 isFetching = false
-            }
-        }
-    }
-
-    companion object {
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                val application = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as PocketDexApplication)
-                ItemViewModel(repository = application.container.itemRepository)
             }
         }
     }

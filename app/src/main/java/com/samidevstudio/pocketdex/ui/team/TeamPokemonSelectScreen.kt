@@ -21,7 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,8 +48,8 @@ fun TeamPokemonSelectScreen(
     onSelect: (PokemonUiModel) -> Unit,
     onBack: () -> Unit
 ) {
-    val state by pokemonViewModel.listUiState.collectAsState()
-    val searchQuery by pokemonViewModel.searchQuery.collectAsState()
+    val state by pokemonViewModel.listUiState.collectAsStateWithLifecycle()
+    val searchQuery by pokemonViewModel.searchQuery.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier

@@ -1,12 +1,9 @@
 package com.samidevstudio.pocketdex.ui.pokemon
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
-import com.samidevstudio.pocketdex.PocketDexApplication
 import com.samidevstudio.pocketdex.data.PokemonRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,10 +14,12 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 private const val PAGE_SIZE = 60
 
-class PokemonViewModel(
+@HiltViewModel
+class PokemonViewModel @Inject constructor(
     private val repository: PokemonRepository,
 ) : ViewModel() {
 
@@ -101,12 +100,6 @@ class PokemonViewModel(
             initialValue = PokemonDetailUiState.Loading
         )
 
-    init {
-        viewModelScope.launch {
-            repository.backfillMissingTypes()
-        }
-    }
-
     fun loadPokemonDetail(id: String?) {
         _currentPokemonId.value = id
     }
@@ -139,8 +132,6 @@ class PokemonViewModel(
             try {
                 repository.fetchPokemonList(offset = currentOffset, limit = PAGE_SIZE)
                 currentOffset += PAGE_SIZE
-                // Trigger backfill for the newly added batch
-                repository.backfillMissingTypes()
             } catch (_: Exception) {
                 // Handle error
             } finally {
@@ -189,14 +180,6 @@ class PokemonViewModel(
                     pokemon.types.any { it.lowercase() in normalizedTypeFilter }
 
                 matchesText && matchesType
-            }
-        }
-
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                val application = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as PocketDexApplication)
-                val pokemonRepository = application.container.pokemonRepository
-                PokemonViewModel(repository = pokemonRepository)
             }
         }
     }

@@ -2,6 +2,7 @@ package com.samidevstudio.pocketdex.ui.team
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,17 +24,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.samidevstudio.pocketdex.domain.TeamAnalysis
 import com.samidevstudio.pocketdex.ui.components.DetailTypeBadge
+import com.samidevstudio.pocketdex.ui.theme.rememberRetroIndication
 import com.samidevstudio.pocketdex.ui.theme.retroBorder
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -43,7 +47,7 @@ fun TeamScreen(
     onAddPokemon: (replacePosition: Int?) -> Unit,
     onPokemonClick: (pokemonId: String, pokemonName: String) -> Unit
 ) {
-    val state by viewModel.teamUiState.collectAsState()
+    val state by viewModel.teamUiState.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = Modifier
@@ -92,7 +96,11 @@ private fun TeamSlotCard(
             .fillMaxWidth()
             .retroBorder()
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-            .clickable { if (member != null) onClick() else onAdd() }
+            .semantics(mergeDescendants = true) { }
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = rememberRetroIndication()
+            ) { if (member != null) onClick() else onAdd() }
             .padding(12.dp)
     ) {
         if (member == null) {

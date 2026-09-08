@@ -36,7 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -107,7 +107,7 @@ fun PokemonDetailScreen(
             }
         }
 
-        val stateValue by viewModel.detailUiState.collectAsState()
+        val stateValue by viewModel.detailUiState.collectAsStateWithLifecycle()
         val state = stateValue
         val scrollState = rememberScrollState()
         
