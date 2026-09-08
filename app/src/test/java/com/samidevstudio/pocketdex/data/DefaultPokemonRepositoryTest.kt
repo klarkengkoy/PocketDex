@@ -118,6 +118,13 @@ class DefaultPokemonRepositoryTest {
                 )
             )
         }
+
+        override suspend fun getMoveList(limit: Int, offset: Int): MoveListResponse = throw NotImplementedError()
+        override suspend fun getMoveDetail(id: String): MoveDetail = throw NotImplementedError()
+        override suspend fun getTypeList(): TypeListResponse = throw NotImplementedError()
+        override suspend fun getTypeDetail(id: String): TypeDetail = throw NotImplementedError()
+        override suspend fun getItemList(limit: Int, offset: Int): ItemListResponse = throw NotImplementedError()
+        override suspend fun getItemDetail(id: String): ItemDetail = throw NotImplementedError()
     }
 
     private class EmptyPokemonListService : PokeApiService {
@@ -128,6 +135,12 @@ class DefaultPokemonRepositoryTest {
         override suspend fun getPokemonDetail(id: String): PokemonDetail = throw NotImplementedError()
         override suspend fun getPokemonSpecies(id: String): PokemonSpeciesResponse = throw NotImplementedError()
         override suspend fun getEvolutionChain(url: String): EvolutionChainResponse = throw NotImplementedError()
+        override suspend fun getMoveList(limit: Int, offset: Int): MoveListResponse = throw NotImplementedError()
+        override suspend fun getMoveDetail(id: String): MoveDetail = throw NotImplementedError()
+        override suspend fun getTypeList(): TypeListResponse = throw NotImplementedError()
+        override suspend fun getTypeDetail(id: String): TypeDetail = throw NotImplementedError()
+        override suspend fun getItemList(limit: Int, offset: Int): ItemListResponse = throw NotImplementedError()
+        override suspend fun getItemDetail(id: String): ItemDetail = throw NotImplementedError()
     }
 
     private class CountingPokemonDao : PokemonDao {
