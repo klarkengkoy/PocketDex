@@ -29,10 +29,6 @@ object RetroStyles {
     val BorderColor = Color.Black
     val GridSize = 20.dp
     
-    // Default colors for light mode
-    val CanvasColor1 = Color.White
-    val CanvasColor2 = Color(0xFFEEEEEE)
-
     /**
      * A custom shape for the BottomAppBar that creates a "Cradle" cutout
      * for the central Pokeball.
@@ -41,8 +37,6 @@ object RetroStyles {
         cutoutRadius = cutoutRadius,
         cornerRadius = 15.dp  
     )
-    
-    val CradleShape = cradleShape()
 }
 
 /**

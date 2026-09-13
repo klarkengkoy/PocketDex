@@ -4,8 +4,6 @@ import androidx.compose.ui.graphics.Color
 
 // Defining some primary Pokémon colors
 val PokedexRed = Color(0xFFE3350D)
-val PokedexBlue = Color(0xFF31A7D7)
-val PokedexGold = Color(0xFFE6BC2F)
 
 // Light Palette
 val LightPrimary = PokedexRed
