@@ -19,11 +19,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -36,7 +39,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -45,13 +47,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.samidevstudio.pocketdex.ui.components.DetailTypeBadge
 import com.samidevstudio.pocketdex.ui.navigation.POKEDEX_ANIM_MS
 import com.samidevstudio.pocketdex.ui.navigation.PokedexSettlingCurve
@@ -59,7 +61,6 @@ import com.samidevstudio.pocketdex.ui.navigation.pokemonSpriteTransform
 import com.samidevstudio.pocketdex.ui.pokemon.components.EvolutionCarousel
 import com.samidevstudio.pocketdex.ui.pokemon.components.PokemonDescriptionCard
 import com.samidevstudio.pocketdex.ui.pokemon.components.PokemonStatsCard
-import com.samidevstudio.pocketdex.ui.theme.retroBackground
 import kotlinx.coroutines.delay
 
 @Composable
@@ -113,6 +114,15 @@ fun PokemonDetailScreen(
         
         var isBackingOut by remember { mutableStateOf(false) }
         
+        LaunchedEffect(isBackingOut) {
+            if (isBackingOut) {
+                // Allow a tiny window for any swiped-state ID changes to propagate
+                // before we trigger the return navigation flight.
+                delay(50L)
+                onBack()
+            }
+        }
+        
         // PERFORMANCE: Disable shared element tracking after the initial flight to save CPU
         // during carousel swipes.
         var isTransitionFinished by remember { mutableStateOf(false) }
@@ -143,55 +153,57 @@ fun PokemonDetailScreen(
         } else {
             currentSwipedId
         }
-        val safeTopPadding = 24.dp
+        
 
         Scaffold(
             containerColor = Color.Transparent,
-            modifier = Modifier.fillMaxSize()
-        ) { innerPadding ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = safeTopPadding + innerPadding.calculateTopPadding() + 8.dp, start = 8.dp, end = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { if (!isBackingOut) isBackingOut = true }) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                        .padding(top = 8.dp, start = 8.dp, end = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { if (!isBackingOut) isBackingOut = true }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
 
-                with(sharedTransitionScope) {
-                    Text(
-                        text = pokemonName.uppercase(),
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .weight(1f)
-                            .sharedElement(
-                                sharedContentState = rememberSharedContentState(key = "pokemon-name-$currentDisplayId"),
-                                animatedVisibilityScope = animatedVisibilityScope,
-                                boundsTransform = pokemonSpriteTransform()
-                            )
-                            .skipToLookaheadSize()
-                    )
+                    with(sharedTransitionScope) {
+                        Text(
+                            text = pokemonName.uppercase(),
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .weight(1f)
+                                .sharedElement(
+                                    sharedContentState = rememberSharedContentState(key = "pokemon-name-$currentDisplayId"),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    boundsTransform = pokemonSpriteTransform()
+                                )
+                                .skipToLookaheadSize()
+                        )
+                    }
                 }
             }
-
+        ) { innerPadding ->
             val density = LocalDensity.current
             val windowInfo = LocalWindowInfo.current
             val screenWidth = with(density) { windowInfo.containerSize.width.toDp() }
-            val heroWidth = screenWidth * 0.65f 
+            val heroWidth = screenWidth * 0.65f
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .padding(
-                        top = safeTopPadding + innerPadding.calculateTopPadding() + 16.dp,
+                        top = innerPadding.calculateTopPadding(),
                         start = 16.dp,
                         end = 16.dp,
                         bottom = 200.dp

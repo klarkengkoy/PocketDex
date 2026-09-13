@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,29 +15,28 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.samidevstudio.pocketdex.domain.TeamAnalysis
 import com.samidevstudio.pocketdex.ui.components.DetailTypeBadge
+import com.samidevstudio.pocketdex.ui.components.PocketDexHeader
 import com.samidevstudio.pocketdex.ui.theme.rememberRetroIndication
 import com.samidevstudio.pocketdex.ui.theme.retroBorder
 
@@ -49,36 +49,32 @@ fun TeamScreen(
 ) {
     val state by viewModel.teamUiState.collectAsStateWithLifecycle()
 
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = 24.dp, bottom = 180.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp)
     ) {
-        item {
-            Text(
-                text = "MY TEAM",
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 26.sp,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
+        PocketDexHeader(text = "TEAM", modifier = Modifier.padding(horizontal = 0.dp))
 
-        items(count = MAX_TEAM_SIZE) { position ->
-            val member = state.members.firstOrNull { it.position == position }
-            TeamSlotCard(
-                member = member,
-                onAdd = { onAddPokemon(null) },
-                onReplace = { onAddPokemon(position) },
-                onRemove = { viewModel.remove(position) },
-                onClick = { member?.let { onPokemonClick(it.pokemonId, it.pokemonName) } }
-            )
-        }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 0.dp, bottom = 180.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(count = MAX_TEAM_SIZE) { position ->
+                val member = state.members.firstOrNull { it.position == position }
+                TeamSlotCard(
+                    member = member,
+                    onAdd = { onAddPokemon(null) },
+                    onReplace = { onAddPokemon(position) },
+                    onRemove = { viewModel.remove(position) },
+                    onClick = { member?.let { onPokemonClick(it.pokemonId, it.pokemonName) } }
+                )
+            }
 
-        state.analysis?.let { analysis ->
-            item { TeamAnalysisSection(analysis) }
+            state.analysis?.let { analysis ->
+                item { TeamAnalysisSection(analysis) }
+            }
         }
     }
 }

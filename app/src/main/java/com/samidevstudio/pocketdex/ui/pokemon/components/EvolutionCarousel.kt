@@ -80,7 +80,6 @@ fun EvolutionCarousel(
                 // in the ViewModel so the return flight finds the correct grid slot in the list.
                 // We no longer force a scroll back to the original clicked Pokémon, as flying 
                 // back from the current "Hero" provides a much smoother and expected transition.
-                onBack() 
             }
         }
 
