@@ -6,6 +6,8 @@ PocketDex is a retro-styled Pokémon encyclopedia built to explore the capabilit
 ## Core Features
 - **Retro Aesthetic:** Immersive checkered backgrounds powered by hardware-accelerated shaders and edge-to-edge rendering.
 - **Shared Element Transitions:** Seamless "flight" animations for Pokémon sprites between screens using the Compose Shared Transition API.
+- **Interactive Discovery:** Features a custom **Morphing Search Bar** and **Type Filter Bottom Sheet** for fluid, app-like interactions.
+- **Adaptive Layouts:** Fully optimized for system insets and edge-to-edge rendering with a custom unified navigation system.
 - **Evolution Hub:** ID-sorted carousel supporting linear and branching families with a "Stable Container" strategy to prevent UI blinking.
 - **Offline-First Data:** Full Room persistence with a **WorkManager-powered Sync Engine** that reliably backfills data in the background.
 - **Modern DI Architecture:** Clean dependency management using **Hilt** for scalability and testability.
