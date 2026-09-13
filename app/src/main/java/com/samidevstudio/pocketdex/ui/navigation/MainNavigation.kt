@@ -15,6 +15,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
@@ -122,6 +123,7 @@ sealed interface PokedexRoute : NavKey, Parcelable {
 @Composable
 fun MainNavigation(
     backStack: NavBackStack<NavKey>,
+    navigationBottomPadding: Dp,
     modifier: Modifier = Modifier,
     onBack: () -> Unit
 ) {
@@ -179,6 +181,7 @@ fun MainNavigation(
                         viewModel = pokemonViewModel,
                         sharedTransitionScope = this@SharedTransitionLayout,
                         animatedVisibilityScope = animatedVisibilityScope,
+                        navigationBottomPadding = navigationBottomPadding,
                         onPokemonClick = { pokemon ->
                             backStack.add(PokedexRoute.Detail(pokemon.id, pokemon.name))
                         }

@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Backpack
@@ -43,8 +42,8 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import com.samidevstudio.pocketdex.ui.components.PokeballCanvas
 import com.samidevstudio.pocketdex.ui.navigation.MainNavigation
 import com.samidevstudio.pocketdex.ui.navigation.PokedexRoute
-import com.samidevstudio.pocketdex.ui.theme.PokedexRed
 import com.samidevstudio.pocketdex.ui.theme.PocketDexTheme
+import com.samidevstudio.pocketdex.ui.theme.PokedexRed
 import com.samidevstudio.pocketdex.ui.theme.RetroStyles
 import com.samidevstudio.pocketdex.ui.theme.rememberRetroIndication
 import com.samidevstudio.pocketdex.ui.theme.retroBackground
@@ -57,13 +56,12 @@ fun PocketDexApp() {
     val retroIndication = rememberRetroIndication()
     
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     
     // Adaptive Sizes
-    val barHeight = if (isLandscape) 64.dp else 100.dp
-    val pokeballSize = if (isLandscape) 70.dp else 100.dp
-    val pokeballOffset = if (isLandscape) 40.dp else 70.dp
-    val cradleRadius = if (isLandscape) 44.dp else 64.dp
+    val barHeight = 56.dp
+    val pokeballSize = 64.dp
+    val pokeballOffset = 32.dp
+    val cradleRadius = 38.dp
 
     PocketDexTheme(darkTheme = isDarkTheme) {
         val color1 = MaterialTheme.colorScheme.surface
@@ -80,43 +78,29 @@ fun PocketDexApp() {
             color = Color.Transparent
         ) {
             Scaffold(
-                containerColor = Color.Transparent
-            ) { innerPadding ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                ) {
-                    // 1. Main Navigation Layer
-                    MainNavigation(
-                        backStack = backStack,
-                        onBack = {
-                            if (backStack.size > 1) {
-                                backStack.removeAt(backStack.lastIndex)
-                            }
-                        }
-                    )
+                containerColor = Color.Transparent,
+                bottomBar = {
+                    val navInsets = WindowInsets.navigationBars.asPaddingValues()
+                    val navBottom = navInsets.calculateBottomPadding()
 
                     // 2. UNIFIED Navigation Assembly
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .windowInsetsPadding(WindowInsets.navigationBars)
-                            .align(Alignment.BottomCenter)
                     ) {
                         // The Bottom Bar
                         Surface(
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.inverseOnSurface,
                             shape = RetroStyles.cradleShape(cradleRadius),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(barHeight)
+                                .height(barHeight + navBottom)
                                 .align(Alignment.BottomCenter)
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = if (isLandscape) 4.dp else 12.dp),
+                                    .padding(bottom = navBottom),
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -173,7 +157,7 @@ fun PocketDexApp() {
                             modifier = Modifier
                                 .size(pokeballSize)
                                 .align(Alignment.BottomCenter)
-                                .offset(y = -(barHeight - pokeballOffset))
+                                .offset(y = -(barHeight + navBottom - pokeballOffset))
                                 .semantics { contentDescription = "Pokedex List" }
                                 .clickable(
                                     interactionSource = interactionSource,
@@ -191,6 +175,22 @@ fun PocketDexApp() {
                             )
                         }
                     }
+                }
+            ) { innerPadding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                ) {
+                    // 1. Main Navigation Layer
+                    MainNavigation(
+                        backStack = backStack,
+                        navigationBottomPadding = innerPadding.calculateBottomPadding(),
+                        onBack = {
+                            if (backStack.size > 1) {
+                                backStack.removeAt(backStack.lastIndex)
+                            }
+                        }
+                    )
                 }
             }
         }
