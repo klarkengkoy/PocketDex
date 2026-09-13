@@ -104,6 +104,12 @@ class PokemonViewModel @Inject constructor(
         _currentPokemonId.value = id
     }
 
+    fun refreshPokemon(id: String) {
+        viewModelScope.launch {
+            repository.syncPokemonDetail(id)
+        }
+    }
+
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query.trim()
     }
@@ -115,10 +121,6 @@ class PokemonViewModel @Inject constructor(
         _typeFilter.value = _typeFilter.value.toMutableSet().apply {
             if (contains(normalizedType)) remove(normalizedType) else add(normalizedType)
         }
-    }
-
-    fun clearTypeFilters() {
-        _typeFilter.value = emptySet()
     }
 
     fun loadMore() {

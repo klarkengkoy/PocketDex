@@ -59,13 +59,6 @@ object TypeEffectivenessCalculator {
         return multiplier
     }
 
-    /** Multiplier per attacking type (keyed by type name) for a Pokémon with [defendingTypes]. */
-    fun defensiveProfile(
-        defendingTypes: List<String>,
-        allTypes: Map<String, TypeRelations>
-    ): Map<String, Double> =
-        allTypes.keys.associateWith { attackType -> multiplierFor(attackType, defendingTypes, allTypes) }
-
     fun classify(multiplier: Double): Effectiveness = when {
         multiplier == 0.0 -> Effectiveness.IMMUNE
         multiplier < 1.0 -> Effectiveness.RESISTANT

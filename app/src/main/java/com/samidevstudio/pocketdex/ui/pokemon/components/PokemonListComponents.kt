@@ -2,14 +2,17 @@ package com.samidevstudio.pocketdex.ui.pokemon.components
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,13 +25,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -38,13 +41,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import com.samidevstudio.pocketdex.ui.components.PocketDexHeader
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -68,108 +76,17 @@ import com.samidevstudio.pocketdex.ui.theme.rememberRetroIndication
 import com.samidevstudio.pocketdex.ui.theme.retroBorder
 
 @Composable
-fun PokemonSearchHeader(
-    onSearchClick: () -> Unit,
-    onFilterClick: () -> Unit,
-    titleAlpha: Float,
+fun PokemonListHeader(
     modifier: Modifier = Modifier
 ) {
-    Row(
+    PocketDexHeader(
+        text = "POKEMON",
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .graphicsLayer { alpha = titleAlpha },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = "PocketDex",
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 24.sp,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            IconButton(
-                onClick = onSearchClick,
-                modifier = Modifier
-                    .size(36.dp)
-                    .retroBorder()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Open search",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            IconButton(
-                onClick = onFilterClick,
-                modifier = Modifier
-                    .size(36.dp)
-                    .retroBorder()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.FilterList,
-                    contentDescription = "Filter Pokémon",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun PokemonSearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onClearClick: () -> Unit,
-    interactionSource: MutableInteractionSource,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        placeholder = {
-            Text(
-                text = " Search Pokemon Name or Pokemon ID",
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
-            )
-        },
-        singleLine = true,
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .retroBorder(),
-        interactionSource = interactionSource,
-        trailingIcon = {
-            IconButton(
-                onClick = onClearClick,
-                modifier = Modifier.size(28.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Clear search",
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
-            }
-        },
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            cursorColor = MaterialTheme.colorScheme.primary
-        )
     )
 }
 
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PokemonFilterMenu(
     activeTypeFilter: Set<String>,
@@ -177,17 +94,15 @@ fun PokemonFilterMenu(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        shape = MaterialTheme.shapes.small,
+        color = Color.Transparent,
         modifier = modifier.fillMaxWidth()
     ) {
-        Row(
+        FlowRow(
             modifier = Modifier
-                .padding(8.dp)
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             PokemonViewModel.TYPE_FILTER_OPTIONS.forEach { option ->
                 val normalizedOption = option.lowercase()
@@ -198,7 +113,7 @@ fun PokemonFilterMenu(
                 val chipModifier = if (isSelected) {
                     Modifier
                         .background(badgeBrush)
-                        .border(1.dp, MaterialTheme.colorScheme.onSurface, MaterialTheme.shapes.small)
+                        .border(2.dp, Color.Black, MaterialTheme.shapes.small)
                 } else {
                     Modifier
                         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
@@ -209,6 +124,7 @@ fun PokemonFilterMenu(
                     color = Color.Transparent,
                     shape = MaterialTheme.shapes.small,
                     modifier = Modifier
+                        .padding(horizontal = 4.dp)
                         .clip(MaterialTheme.shapes.small)
                         .clickable {
                             onTypeToggle(normalizedOption)
@@ -218,10 +134,110 @@ fun PokemonFilterMenu(
                     Text(
                         text = option.replaceFirstChar { it.uppercase() },
                         color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelLarge,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MorphingSearchBar(
+    isExpanded: Boolean,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onToggle: () -> Unit,
+    onClear: () -> Unit,
+    focusRequester: FocusRequester,
+    interactionSource: MutableInteractionSource,
+    modifier: Modifier = Modifier
+) {
+    val widthPercent by animateDpAsState(
+        targetValue = if (isExpanded) 240.dp else 56.dp,
+        label = "WidthAnimation"
+    )
+
+    Surface(
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
+        shape = CircleShape,
+        modifier = modifier
+            .width(widthPercent)
+            .height(64.dp)
+            .animateContentSize()
+            .then(if (isExpanded) Modifier.retroBorder() else Modifier)
+            .clickable(
+                enabled = !isExpanded,
+                onClick = onToggle
+            ),
+        tonalElevation = 4.dp,
+        shadowElevation = 6.dp
+    ) {
+        if (!isExpanded) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search Dex",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(start = 16.dp)
+                        .size(24.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+                
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    placeholder = {
+                        Text(
+                            text = "Search Dex...",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                        )
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(focusRequester),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = MaterialTheme.colorScheme.onPrimary,
+                        focusedTextColor = MaterialTheme.colorScheme.onPrimary,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    interactionSource = interactionSource,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+
+                IconButton(
+                    onClick = onClear,
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close search",
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -236,8 +252,11 @@ fun PokemonGrid(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
     onLoadMore: () -> Unit,
+    onSyncPokemon: (String) -> Unit,
     onPokemonClick: (PokemonUiModel) -> Unit,
     topPadding: Dp,
+    bottomPadding: Dp,
+    navigationBottomPadding: Dp,
     clickedPokemonId: String?,
     modifier: Modifier = Modifier
 ) {
@@ -246,10 +265,10 @@ fun PokemonGrid(
         state = gridState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            top = topPadding + 16.dp,
+            top = topPadding,
             start = 12.dp,
             end = 12.dp,
-            bottom = 200.dp
+            bottom = bottomPadding + navigationBottomPadding + 100.dp
         ),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -261,6 +280,13 @@ fun PokemonGrid(
             if (index >= pokemonList.size - 10) {
                 onLoadMore()
             }
+            
+            if (pokemon.types.isEmpty()) {
+                LaunchedEffect(pokemon.id) {
+                    onSyncPokemon(pokemon.id)
+                }
+            }
+
             PokemonCard(
                 pokemon = pokemon,
                 sharedTransitionScope = sharedTransitionScope,
