@@ -33,10 +33,6 @@ data class PokemonDetail(
 
 @Serializable
 data class PokemonSprites(
-    @SerialName("front_default")
-    val frontDefault: String,
-    @SerialName("front_shiny")
-    val frontShiny: String,
     val other: OtherSprites
 )
 

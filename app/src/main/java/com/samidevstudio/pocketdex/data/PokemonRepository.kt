@@ -27,7 +27,6 @@ interface PokemonRepository {
     suspend fun syncPokemonDetail(id: String)
     suspend fun syncEvolutionChain(chainId: String)
     suspend fun backfillMissingTypes()
-    suspend fun clearCache()
 }
 
 class DefaultPokemonRepository @Inject constructor(
@@ -192,12 +191,6 @@ class DefaultPokemonRepository @Inject constructor(
         } finally {
             isBackfilling = false
         }
-    }
-
-    override suspend fun clearCache() {
-        pokemonDao.clearPokemonList()
-        pokemonDao.clearPokemonDetail()
-        pokemonDao.clearEvolutionChains()
     }
 
     private fun flattenEvolutionChain(chain: ChainLink): List<EvolutionNode> {

@@ -89,8 +89,6 @@ class DefaultPokemonRepositoryTest {
                 types = emptyList(),
                 stats = emptyList(),
                 sprites = PokemonSprites(
-                    frontDefault = "",
-                    frontShiny = "",
                     other = OtherSprites(
                         officialArtwork = OfficialArtwork(frontDefault = "")
                     )
@@ -157,9 +155,6 @@ class DefaultPokemonRepositoryTest {
         override suspend fun getEvolutionChain(id: String): EvolutionChainEntity? = null
         override fun getEvolutionChainFlow(id: String): Flow<EvolutionChainEntity?> = flowOf(null)
         override suspend fun insertEvolutionChain(chain: EvolutionChainEntity) = Unit
-        override suspend fun clearPokemonList() = Unit
-        override suspend fun clearPokemonDetail() = Unit
-        override suspend fun clearEvolutionChains() = Unit
     }
 
     private class FakePokemonDao : PokemonDao {
@@ -184,11 +179,5 @@ class DefaultPokemonRepositoryTest {
         override fun getEvolutionChainFlow(id: String): Flow<EvolutionChainEntity?> = flowOf(null)
 
         override suspend fun insertEvolutionChain(chain: EvolutionChainEntity) = Unit
-
-        override suspend fun clearPokemonList() = Unit
-
-        override suspend fun clearPokemonDetail() = Unit
-
-        override suspend fun clearEvolutionChains() = Unit
     }
 }
