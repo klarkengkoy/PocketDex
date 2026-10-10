@@ -20,12 +20,10 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -38,7 +36,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import com.samidevstudio.pocketdex.ui.components.PocketDexHeader
@@ -46,7 +44,9 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,15 +59,19 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.samidevstudio.pocketdex.ui.navigation.pokemonSpriteTransform
 import com.samidevstudio.pocketdex.ui.pokemon.PokemonUiModel
 import com.samidevstudio.pocketdex.ui.pokemon.PokemonViewModel
@@ -152,6 +156,7 @@ fun MorphingSearchBar(
     onQueryChange: (String) -> Unit,
     onToggle: () -> Unit,
     onClear: () -> Unit,
+    onClose: () -> Unit,
     focusRequester: FocusRequester,
     interactionSource: MutableInteractionSource,
     modifier: Modifier = Modifier
@@ -160,6 +165,22 @@ fun MorphingSearchBar(
         targetValue = if (isExpanded) 240.dp else 56.dp,
         label = "WidthAnimation"
     )
+    var textFieldValue by remember { mutableStateOf(TextFieldValue(query)) }
+
+    LaunchedEffect(query) {
+        if (textFieldValue.text != query) {
+            textFieldValue = TextFieldValue(query)
+        }
+    }
+
+    LaunchedEffect(isExpanded) {
+        if (isExpanded) {
+            focusRequester.requestFocus()
+            textFieldValue = textFieldValue.copy(
+                selection = TextRange(0, textFieldValue.text.length)
+            )
+        }
+    }
 
     Surface(
         color = MaterialTheme.colorScheme.primary,
@@ -169,7 +190,6 @@ fun MorphingSearchBar(
             .width(widthPercent)
             .height(64.dp)
             .animateContentSize()
-            .then(if (isExpanded) Modifier.retroBorder() else Modifier)
             .clickable(
                 enabled = !isExpanded,
                 onClick = onToggle
@@ -199,9 +219,12 @@ fun MorphingSearchBar(
                     tint = MaterialTheme.colorScheme.onPrimary
                 )
                 
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
+                TextField(
+                    value = textFieldValue,
+                    onValueChange = { value ->
+                        textFieldValue = value
+                        onQueryChange(value.text)
+                    },
                     placeholder = {
                         Text(
                             text = "Search Dex...",
@@ -214,6 +237,17 @@ fun MorphingSearchBar(
                         .weight(1f)
                         .focusRequester(focusRequester),
                     singleLine = true,
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = onClear) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear search query",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    },
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
@@ -231,7 +265,7 @@ fun MorphingSearchBar(
                 )
 
                 IconButton(
-                    onClick = onClear,
+                    onClick = onClose,
                     modifier = Modifier.padding(end = 8.dp)
                 ) {
                     Icon(
@@ -261,7 +295,7 @@ fun PokemonGrid(
     modifier: Modifier = Modifier
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Adaptive(minSize = 150.dp),
         state = gridState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -309,11 +343,18 @@ fun PokemonCard(
 ) {
     val retroIndication = rememberRetroIndication()
     val interactionSource = remember { MutableInteractionSource() }
+    val context = LocalContext.current
+    val imageRequest = remember(context, pokemon.imageUrl) {
+        ImageRequest.Builder(context)
+            .data(pokemon.imageUrl)
+            .transformations(SpriteBoundsTransformation)
+            .build()
+    }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(1f)
+            .aspectRatio(0.8f)
             .graphicsLayer {
                 clip = true
             }
@@ -364,7 +405,7 @@ fun PokemonCard(
                 ) {
                     with(sharedTransitionScope) {
                         AsyncImage(
-                            model = pokemon.imageUrl,
+                            model = imageRequest,
                             contentDescription = pokemon.name,
                             modifier = Modifier
                                 .fillMaxSize()
