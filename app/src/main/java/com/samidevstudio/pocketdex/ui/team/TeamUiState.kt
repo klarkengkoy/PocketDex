@@ -18,5 +18,6 @@ data class TeamMemberModel(
 data class TeamUiState(
     val members: List<TeamMemberModel> = emptyList(),
     val analysis: TeamAnalysis? = null,
-    val isFull: Boolean = false
+    val isFull: Boolean = false,
+    val typeSyncError: String? = null
 )

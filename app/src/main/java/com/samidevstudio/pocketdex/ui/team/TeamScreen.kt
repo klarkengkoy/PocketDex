@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -55,6 +56,13 @@ fun TeamScreen(
             .padding(horizontal = 16.dp)
     ) {
         PocketDexHeader(text = "TEAM", modifier = Modifier.padding(horizontal = 0.dp))
+
+        state.typeSyncError?.let { error ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
+                TextButton(onClick = viewModel::retryTypeSync) { Text("RETRY") }
+            }
+        }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
