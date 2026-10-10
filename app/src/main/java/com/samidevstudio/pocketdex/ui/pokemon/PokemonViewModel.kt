@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.samidevstudio.pocketdex.data.PokemonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,6 +26,8 @@ class PokemonViewModel @Inject constructor(
 
     private var currentOffset = 0
     private var isFetching = false
+    private val _listError = MutableStateFlow<String?>(null)
+    private val _detailError = MutableStateFlow<Pair<String, String>?>(null)
     private val _searchQuery = MutableStateFlow("")
     private val _typeFilter = MutableStateFlow<Set<String>>(emptySet())
 
@@ -45,8 +48,9 @@ class PokemonViewModel @Inject constructor(
     val listUiState: StateFlow<PokemonListUiState> = combine(
         repository.getPokemonListFlow(),
         _searchQuery,
-        _typeFilter
-    ) { list, query, typeFilter ->
+        _typeFilter,
+        _listError
+    ) { list, query, typeFilter, errorMessage ->
         // Keep offset in sync with what's actually in the DB
         if (list.isNotEmpty() && !isFetching) {
             currentOffset = list.size
@@ -55,10 +59,13 @@ class PokemonViewModel @Inject constructor(
         val filteredList = applyPokemonSearch(query, list, typeFilter)
 
         if (list.isEmpty()) {
-            if (currentOffset == 0) fetchNamesBatch()
-            PokemonListUiState.Loading
+            if (errorMessage != null) PokemonListUiState.Error(errorMessage)
+            else {
+                if (currentOffset == 0) fetchNamesBatch()
+                PokemonListUiState.Loading
+            }
         } else {
-            PokemonListUiState.Success(filteredList)
+            PokemonListUiState.Success(filteredList, errorMessage)
         }
     }
         .stateIn(
@@ -80,18 +87,18 @@ class PokemonViewModel @Inject constructor(
     val detailUiState: StateFlow<PokemonDetailUiState> = _currentPokemonId
         .flatMapLatest { id ->
             if (id == null) return@flatMapLatest flowOf(PokemonDetailUiState.Loading)
-            
-            // Observe DB and combine with evolution chain
-            repository.getPokemonDetailFlow(id).flatMapLatest { detail ->
-                if (detail == null) {
-                    // Trigger sync if not in DB
-                    viewModelScope.launch { repository.syncPokemonDetail(id) }
-                    flowOf(PokemonDetailUiState.Loading)
-                } else {
-                    repository.getEvolutionChainFlow(detail.chainId).map { evolutions ->
-                        PokemonDetailUiState.Success(detail.copy(evolutions = evolutions))
-                    }
+
+            val detailState = repository.getPokemonDetailFlow(id).flatMapLatest { detail ->
+                if (detail == null) flowOf(PokemonDetailUiState.Loading)
+                else repository.getEvolutionChainFlow(detail.chainId).map { evolutions ->
+                    PokemonDetailUiState.Success(detail.copy(evolutions = evolutions))
                 }
+            }
+            combine(detailState, _detailError) { state, failure ->
+                if (failure?.first == id) {
+                    if (state is PokemonDetailUiState.Success) state.copy(errorMessage = failure.second)
+                    else PokemonDetailUiState.Error(failure.second)
+                } else state
             }
         }
         .stateIn(
@@ -102,11 +109,32 @@ class PokemonViewModel @Inject constructor(
 
     fun loadPokemonDetail(id: String?) {
         _currentPokemonId.value = id
+        _detailError.value = null
+        id?.let(::syncPokemonDetail)
+    }
+
+    fun retryPokemonDetail() {
+        _currentPokemonId.value?.let { id ->
+            _detailError.value = null
+            syncPokemonDetail(id)
+        }
     }
 
     fun refreshPokemon(id: String) {
+        syncPokemonDetail(id)
+    }
+
+    private fun syncPokemonDetail(id: String) {
         viewModelScope.launch {
-            repository.syncPokemonDetail(id)
+            try {
+                repository.syncPokemonDetail(id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (_currentPokemonId.value == id) {
+                    _detailError.value = id to (e.message ?: "Could not load Pokémon details")
+                }
+            }
         }
     }
 
@@ -123,19 +151,36 @@ class PokemonViewModel @Inject constructor(
         }
     }
 
+    fun clearFilters() {
+        _searchQuery.value = ""
+        _typeFilter.value = emptySet()
+    }
+
     fun loadMore() {
+        val state = listUiState.value
+        if (state is PokemonListUiState.Error ||
+            (state is PokemonListUiState.Success && state.errorMessage != null)
+        ) return
+        fetchNamesBatch()
+    }
+
+    fun retryLoad() {
+        _listError.value = null
         fetchNamesBatch()
     }
 
     private fun fetchNamesBatch() {
         if (isFetching) return
         isFetching = true
+        _listError.value = null
         viewModelScope.launch {
             try {
                 repository.fetchPokemonList(offset = currentOffset, limit = PAGE_SIZE)
                 currentOffset += PAGE_SIZE
-            } catch (_: Exception) {
-                // Handle error
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _listError.value = e.message ?: "Could not load Pokémon"
             } finally {
                 isFetching = false
             }

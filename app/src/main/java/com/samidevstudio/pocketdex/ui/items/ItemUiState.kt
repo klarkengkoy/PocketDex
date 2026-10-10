@@ -22,7 +22,7 @@ data class ItemDetailModel(
 
 sealed interface ItemListUiState {
     data object Loading : ItemListUiState
-    data class Success(val items: List<ItemListModel>) : ItemListUiState
+    data class Success(val items: List<ItemListModel>, val errorMessage: String? = null) : ItemListUiState
     data class Error(val message: String) : ItemListUiState
 }
 

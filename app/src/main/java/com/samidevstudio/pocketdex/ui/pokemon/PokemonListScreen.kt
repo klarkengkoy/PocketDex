@@ -9,7 +9,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
@@ -20,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,14 +73,8 @@ fun PokemonScreen(
     val isFocused by interactionSource.collectIsFocusedAsState()
     val searchFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(isFocused, searchQuery.isNotEmpty()) {
-        isSearchActive = isFocused || searchQuery.isNotEmpty()
-    }
-
-    LaunchedEffect(isSearchActive) {
-        if (isSearchActive) {
-            searchFocusRequester.requestFocus()
-        }
+    LaunchedEffect(isFocused) {
+        isSearchActive = isFocused
     }
 
     val activePokemonId by viewModel.activePokemonId.collectAsStateWithLifecycle()
@@ -97,7 +98,86 @@ fun PokemonScreen(
                 }
                 is PokemonListUiState.Success -> {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        PokemonListHeader()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(end = 16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                PokemonListHeader(modifier = Modifier.weight(1f))
+                                Spacer(modifier = Modifier.width(64.dp))
+                                FloatingActionButton(
+                                    onClick = { showFilterSheet = true },
+                                    modifier = Modifier.align(Alignment.Bottom),
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.FilterList,
+                                        contentDescription = if (activeTypeFilter.isEmpty()) {
+                                            "Open Type Filter"
+                                        } else {
+                                            "Open Type Filter, ${activeTypeFilter.size} active"
+                                        }
+                                    )
+                                }
+                            }
+                            MorphingSearchBar(
+                                isExpanded = isSearchActive,
+                                query = searchQuery,
+                                onQueryChange = viewModel::updateSearchQuery,
+                                onToggle = { isSearchActive = true },
+                                onClear = { viewModel.updateSearchQuery("") },
+                                onClose = {
+                                    isSearchActive = false
+                                    focusManager.clearFocus()
+                                },
+                                interactionSource = interactionSource,
+                                focusRequester = searchFocusRequester,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .offset(x = (-64).dp, y = 4.dp)
+                            )
+                        }
+                        if (searchQuery.isNotEmpty() || activeTypeFilter.isNotEmpty()) {
+                            val activeCriteria = buildList {
+                                if (searchQuery.isNotEmpty()) add("SEARCH: ${searchQuery.uppercase()}")
+                                if (activeTypeFilter.isNotEmpty()) {
+                                    add(activeTypeFilter.sorted().joinToString(" + ") { it.uppercase() })
+                                }
+                            }.joinToString(" · ")
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "${state.pokemonList.size} RESULTS",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = activeCriteria,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                }
+                                TextButton(onClick = viewModel::clearFilters) { Text("CLEAR ALL") }
+                            }
+                        }
+                        state.errorMessage?.let { message ->
+                            Text(message, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
+                            TextButton(onClick = viewModel::retryLoad) { Text("RETRY") }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
                         PokemonGrid(
                             pokemonList = state.pokemonList,
                             gridState = gridState,
@@ -117,55 +197,23 @@ fun PokemonScreen(
                     }
                 }
                 is PokemonListUiState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
                         Text(
                             text = "ERROR: ${state.message}",
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(16.dp),
                             fontFamily = FontFamily.Monospace
                         )
+                        TextButton(onClick = viewModel::retryLoad) { Text("RETRY") }
                     }
                 }
             }
 
-            // Bottom-anchored Search & Filter Triggers
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = navigationBottomPadding + 48.dp, end = 16.dp),
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Filter Toggle
-                FloatingActionButton(
-                    onClick = { showFilterSheet = true },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FilterList,
-                        contentDescription = "Open Type Filter"
-                    )
-                }
 
-                // Search Toggle / Field
-                MorphingSearchBar(
-                    isExpanded = isSearchActive || searchQuery.isNotEmpty(),
-                    query = searchQuery,
-                    onQueryChange = { query ->
-                        viewModel.updateSearchQuery(query)
-                    },
-                    onToggle = { isSearchActive = true },
-                    onClear = {
-                        viewModel.updateSearchQuery("")
-                        isSearchActive = false
-                        focusManager.clearFocus()
-                    },
-                    interactionSource = interactionSource,
-                    focusRequester = searchFocusRequester,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
         }
 
         if (showFilterSheet) {

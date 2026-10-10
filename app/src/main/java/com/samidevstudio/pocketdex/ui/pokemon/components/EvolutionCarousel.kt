@@ -1,10 +1,17 @@
 package com.samidevstudio.pocketdex.ui.pokemon.components
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,19 +22,26 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.util.lerp
 import coil.compose.AsyncImage
 import com.samidevstudio.pocketdex.ui.navigation.pokemonSpriteTransform
@@ -48,15 +62,19 @@ fun EvolutionCarousel(
     isTransitionFinished: Boolean,
     onBackingOutChange: (Boolean) -> Unit,
     onPokemonChange: (String) -> Unit,
+    canSwitchBranchVertically: Boolean,
+    branchScrollDirection: Int,
+    onVerticalBranchChange: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
     val chainKey = remember(evolutions) {
-        evolutions.joinToString(",") { it.id }
+        "${evolutions.firstOrNull()?.id}:${evolutions.size}"
     }
     
     // PRE-ALLOCATED SHAPE: Creating this outside the draw loop prevents thousands of 
     // object allocations per second during scrolls.
     val carouselShape = remember { RoundedCornerShape(32.dp) }
+    val latestVerticalBranchChange = rememberUpdatedState(onVerticalBranchChange)
 
     key(chainKey) {
         val initialPage = remember(evolutions, currentDisplayId) {
@@ -72,15 +90,6 @@ fun EvolutionCarousel(
 
         BackHandler(enabled = !isBackingOut) {
             onBackingOutChange(true)
-        }
-
-        LaunchedEffect(isBackingOut) {
-            if (isBackingOut) {
-                // If the user swiped to a different evolution, we update the active shared element
-                // in the ViewModel so the return flight finds the correct grid slot in the list.
-                // We no longer force a scroll back to the original clicked Pokémon, as flying 
-                // back from the current "Hero" provides a much smoother and expected transition.
-            }
         }
 
         LaunchedEffect(pagerState, currentDisplayId) {
@@ -105,6 +114,20 @@ fun EvolutionCarousel(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(320.dp)
+                .pointerInput(canSwitchBranchVertically) {
+                    if (canSwitchBranchVertically) {
+                        var handled = false
+                        detectVerticalDragGestures(
+                            onDragStart = { handled = false },
+                            onVerticalDrag = { _, dragAmount ->
+                                if (!handled) {
+                                    handled = true
+                                    latestVerticalBranchChange.value(dragAmount < 0f)
+                                }
+                            }
+                        )
+                    }
+                }
         ) { page ->
             val node = evolutions[page]
             val isHeroData = node.id == currentDisplayId
@@ -147,27 +170,61 @@ fun EvolutionCarousel(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    with(sharedTransitionScope) {
-                        AsyncImage(
-                            model = node.imageUrl,
-                            contentDescription = node.name,
-                            modifier = Modifier
-                                .size(240.dp)
-                                .padding(16.dp)
-                                .then(
-                                    // RE-ENABLE shared element tracking if we are currently backing out or if it's the hero.
-                                    // We use node.id to ensure the return flight matches the correct card in the grid.
-                                    if (node.id == currentDisplayId && (!isTransitionFinished || isBackingOut)) {
-                                        Modifier.sharedElement(
-                                            sharedContentState = rememberSharedContentState(key = "pokemon-image-${node.id}"),
-                                            animatedVisibilityScope = animatedVisibilityScope,
-                                            boundsTransform = pokemonSpriteTransform()
-                                        )
-                                    } else Modifier
-                                ),
-                            filterQuality = FilterQuality.None,
-                            contentScale = ContentScale.Fit
-                        )
+                    AnimatedContent(
+                        targetState = node,
+                        transitionSpec = {
+                            val incomingDirection = if (branchScrollDirection > 0) 1 else -1
+                            (slideInVertically { it * incomingDirection } + fadeIn()) togetherWith
+                                    (slideOutVertically { -it * incomingDirection } + fadeOut())
+                        },
+                        label = "evolutionBranch"
+                    ) { animatedNode ->
+                        with(sharedTransitionScope) {
+                            AsyncImage(
+                                model = animatedNode.imageUrl,
+                                contentDescription = animatedNode.name,
+                                modifier = Modifier
+                                    .size(240.dp)
+                                    .padding(16.dp)
+                                    .then(
+                                        if (animatedNode.id == currentDisplayId && (!isTransitionFinished || isBackingOut)) {
+                                            Modifier.sharedElement(
+                                                sharedContentState = rememberSharedContentState(key = "pokemon-image-${animatedNode.id}"),
+                                                animatedVisibilityScope = animatedVisibilityScope,
+                                                boundsTransform = pokemonSpriteTransform()
+                                            )
+                                        } else Modifier
+                                    ),
+                                filterQuality = FilterQuality.None,
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    }
+                }
+
+                if (node.id == currentDisplayId && canSwitchBranchVertically) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 8.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+                                RoundedCornerShape(24.dp)
+                            ),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        IconButton(
+                            onClick = { latestVerticalBranchChange.value(true) },
+                            modifier = Modifier.semantics { contentDescription = "Next evolution option" }
+                        ) {
+                            Text("↑")
+                        }
+                        IconButton(
+                            onClick = { latestVerticalBranchChange.value(false) },
+                            modifier = Modifier.semantics { contentDescription = "Previous evolution option" }
+                        ) {
+                            Text("↓")
+                        }
                     }
                 }
             }

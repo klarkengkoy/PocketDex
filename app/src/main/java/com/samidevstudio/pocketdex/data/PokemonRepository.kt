@@ -1,6 +1,5 @@
 package com.samidevstudio.pocketdex.data
 
-import android.util.Log
 import com.samidevstudio.pocketdex.data.database.EvolutionChainEntity
 import com.samidevstudio.pocketdex.data.database.PokemonDao
 import com.samidevstudio.pocketdex.data.database.toDetailModel
@@ -13,7 +12,6 @@ import com.samidevstudio.pocketdex.ui.pokemon.StatInfo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import retrofit2.HttpException
 import javax.inject.Inject
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -35,14 +33,6 @@ class DefaultPokemonRepository @Inject constructor(
 ) : PokemonRepository {
 
     companion object {
-        const val INITIAL_BACKOFF_MS = 1000L
-        const val MAX_BACKOFF_MS = 60_000L
-
-        internal fun calculateBackoffDelay(previousDelayMs: Long): Long {
-            if (previousDelayMs <= 0) return INITIAL_BACKOFF_MS
-            return (previousDelayMs * 2).coerceAtMost(MAX_BACKOFF_MS)
-        }
-
         internal fun extractChainIdFromUrl(url: String?): String {
             if (url.isNullOrBlank()) return ""
             return url.trimEnd('/').split('/').lastOrNull { it.isNotBlank() } ?: ""
@@ -80,8 +70,6 @@ class DefaultPokemonRepository @Inject constructor(
                 )
             }
             pokemonDao.insertPokemonList(newItems.map { it.toEntity() })
-        } catch (e: Exception) {
-            Log.e("PokemonRepository", "Error fetching pokemon list", e)
         } finally {
             inFlightListFetches.remove(fetchKey)
         }
@@ -95,7 +83,7 @@ class DefaultPokemonRepository @Inject constructor(
 
     override fun getEvolutionChainFlow(chainId: String): Flow<List<EvolutionNode>> {
         return pokemonDao.getEvolutionChainFlow(chainId).map { entity ->
-            entity?.evolutions ?: emptyList()
+            entity?.evolutions?.takeIf { it.size == 1 } ?: emptyList()
         }
     }
 
@@ -106,8 +94,16 @@ class DefaultPokemonRepository @Inject constructor(
         try {
             val existing = pokemonDao.getPokemonDetail(id)
             if (existing != null && existing.chainId.isNotEmpty()) {
-                val existingChain = pokemonDao.getEvolutionChain(existing.chainId)
-                if (existingChain != null) return
+                val storedTypes = pokemonDao.getPokemonTypes(id)
+                val hasTypes = !storedTypes.isNullOrEmpty() || existing.types.isNotEmpty()
+                if (storedTypes.isNullOrEmpty() && existing.types.isNotEmpty()) {
+                    pokemonDao.updatePokemonTypes(id, existing.types)
+                }
+                val cachedChain = pokemonDao.getEvolutionChain(existing.chainId)
+                if (cachedChain == null || cachedChain.evolutions.size != 1) {
+                    syncEvolutionChain(existing.chainId)
+                }
+                if (hasTypes) return
             }
 
             val networkDetail = apiService.getPokemonDetail(id)
@@ -127,30 +123,22 @@ class DefaultPokemonRepository @Inject constructor(
             pokemonDao.updatePokemonTypes(id, detailModel.types)
 
             val localChain = pokemonDao.getEvolutionChain(chainId)
-            if (localChain == null) {
+            if (localChain == null || localChain.evolutions.size != 1) {
                 syncEvolutionChain(chainId)
             }
-        } catch (e: Exception) {
-            Log.e("PokemonRepository", "Error syncing pokemon detail for $id", e)
         } finally {
             inFlightDetailSyncs.remove(id)
         }
     }
 
     override suspend fun syncEvolutionChain(chainId: String) {
-        try {
-            val url = "https://pokeapi.co/api/v2/evolution-chain/$chainId/"
-            val evolutionChainResponse = apiService.getEvolutionChain(url)
-            val evolutions = flattenEvolutionChain(evolutionChainResponse.chain)
-                .distinctBy { it.id }
-                .sortedBy { it.id.toInt() }
-            
-            pokemonDao.insertEvolutionChain(
-                EvolutionChainEntity(id = chainId, evolutions = evolutions)
-            )
-        } catch (e: Exception) {
-            Log.e("PokemonRepository", "Error syncing evolution chain $chainId", e)
-        }
+        val url = "https://pokeapi.co/api/v2/evolution-chain/$chainId/"
+        val evolutionChainResponse = apiService.getEvolutionChain(url)
+        val evolutionRoot = mapEvolutionChain(evolutionChainResponse.chain)
+
+        pokemonDao.insertEvolutionChain(
+            EvolutionChainEntity(id = chainId, evolutions = listOf(evolutionRoot))
+        )
     }
 
     override suspend fun backfillMissingTypes() {
@@ -158,55 +146,22 @@ class DefaultPokemonRepository @Inject constructor(
         isBackfilling = true
 
         try {
-            var backoffMs = 0L
-
-            while (true) {
-                val ids = pokemonDao.getPokemonIdsMissingTypes()
-                if (ids.isEmpty()) break
-
-                var hitRateLimit = false
-                for (id in ids) {
-                    try {
-                        if (backoffMs > 0) {
-                            delay(backoffMs.milliseconds)
-                        }
-
-                        syncPokemonDetail(id)
-                        backoffMs = 0
-                    } catch (e: HttpException) {
-                        if (e.code() == 429) {
-                            backoffMs = calculateBackoffDelay(backoffMs)
-                            hitRateLimit = true
-                            break
-                        }
-                        continue
-                    } catch (_: Exception) {
-                        continue
-                    }
-                }
-
-                if (hitRateLimit && backoffMs >= MAX_BACKOFF_MS) break
-                if (!hitRateLimit && backoffMs == 0L) delay(100.milliseconds)
+            for (id in pokemonDao.getPokemonIdsMissingTypes()) {
+                syncPokemonDetail(id)
+                delay(100.milliseconds)
             }
         } finally {
             isBackfilling = false
         }
     }
 
-    private fun flattenEvolutionChain(chain: ChainLink): List<EvolutionNode> {
-        val nodes = mutableListOf<EvolutionNode>()
-        nodes.add(
-            EvolutionNode(
-                id = chain.species.id,
-                name = chain.species.name,
-                imageUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${chain.species.id}.png"
-            )
+    private fun mapEvolutionChain(chain: ChainLink): EvolutionNode =
+        EvolutionNode(
+            id = chain.species.id,
+            name = chain.species.name,
+            imageUrl = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${chain.species.id}.png",
+            evolvesTo = chain.evolvesTo.map(::mapEvolutionChain)
         )
-        chain.evolvesTo.forEach {
-            nodes.addAll(flattenEvolutionChain(it))
-        }
-        return nodes
-    }
 
     private fun PokemonDetail.toPokemonDetailModel(
         flavorText: String,

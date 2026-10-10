@@ -24,7 +24,7 @@ data class MoveDetailModel(
 
 sealed interface MoveListUiState {
     data object Loading : MoveListUiState
-    data class Success(val moves: List<MoveListModel>) : MoveListUiState
+    data class Success(val moves: List<MoveListModel>, val errorMessage: String? = null) : MoveListUiState
     data class Error(val message: String) : MoveListUiState
 }
 

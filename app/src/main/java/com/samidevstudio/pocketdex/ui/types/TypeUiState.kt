@@ -17,7 +17,10 @@ data class TypeDetailModel(
 
 sealed interface TypeListUiState {
     data object Loading : TypeListUiState
-    data class Success(val types: List<TypeListModel>) : TypeListUiState
+    data class Success(
+        val types: List<TypeListModel>,
+        val errorMessage: String? = null
+    ) : TypeListUiState
     data class Error(val message: String) : TypeListUiState
 }
 

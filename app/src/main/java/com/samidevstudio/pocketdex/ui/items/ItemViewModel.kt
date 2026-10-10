@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.samidevstudio.pocketdex.data.ItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,6 +26,8 @@ class ItemViewModel @Inject constructor(
 
     private var currentOffset = 0
     private var isFetching = false
+    private val _listError = MutableStateFlow<String?>(null)
+    private val _detailError = MutableStateFlow<Pair<String, String>?>(null)
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
@@ -35,8 +37,9 @@ class ItemViewModel @Inject constructor(
     val listUiState: StateFlow<ItemListUiState> = combine(
         repository.getItemListFlow(MAX_CACHED, 0),
         _searchQuery,
-        _categoryFilter
-    ) { list, query, category ->
+        _categoryFilter,
+        _listError
+    ) { list, query, category, errorMessage ->
         if (list.isNotEmpty() && !isFetching) currentOffset = list.size
 
         val normalizedQuery = query.trim().lowercase()
@@ -47,10 +50,13 @@ class ItemViewModel @Inject constructor(
         }
 
         if (list.isEmpty()) {
-            if (currentOffset == 0) fetchNextBatch()
-            ItemListUiState.Loading
+            if (errorMessage != null) ItemListUiState.Error(errorMessage)
+            else {
+                if (currentOffset == 0) fetchNextBatch()
+                ItemListUiState.Loading
+            }
         } else {
-            ItemListUiState.Success(filtered)
+            ItemListUiState.Success(filtered, errorMessage)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ItemListUiState.Loading)
 
@@ -60,12 +66,11 @@ class ItemViewModel @Inject constructor(
     val detailUiState: StateFlow<ItemDetailUiState> = _currentItemId
         .flatMapLatest { id ->
             if (id == null) return@flatMapLatest flowOf(ItemDetailUiState.Loading)
-            repository.getItemDetailFlow(id).map { detail ->
-                if (detail == null) {
-                    viewModelScope.launch { repository.syncItemDetail(id) }
-                    ItemDetailUiState.Loading
-                } else {
-                    ItemDetailUiState.Success(detail)
+            combine(repository.getItemDetailFlow(id), _detailError) { detail, failure ->
+                when {
+                    detail != null -> ItemDetailUiState.Success(detail)
+                    failure?.first == id -> ItemDetailUiState.Error(failure.second)
+                    else -> ItemDetailUiState.Loading
                 }
             }
         }
@@ -73,6 +78,29 @@ class ItemViewModel @Inject constructor(
 
     fun loadItemDetail(id: String?) {
         _currentItemId.value = id
+        _detailError.value = null
+        id?.let(::syncItemDetail)
+    }
+
+    fun retryItemDetail() {
+        _currentItemId.value?.let { id ->
+            _detailError.value = null
+            syncItemDetail(id)
+        }
+    }
+
+    private fun syncItemDetail(id: String) {
+        viewModelScope.launch {
+            try {
+                repository.syncItemDetail(id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (_currentItemId.value == id) {
+                    _detailError.value = id to (e.message ?: "Could not load item details")
+                }
+            }
+        }
     }
 
     fun updateSearchQuery(query: String) {
@@ -84,18 +112,30 @@ class ItemViewModel @Inject constructor(
     }
 
     fun loadMore() {
+        val state = listUiState.value
+        if (state is ItemListUiState.Error ||
+            (state is ItemListUiState.Success && state.errorMessage != null)
+        ) return
+        fetchNextBatch()
+    }
+
+    fun retryLoad() {
+        _listError.value = null
         fetchNextBatch()
     }
 
     private fun fetchNextBatch() {
         if (isFetching) return
         isFetching = true
+        _listError.value = null
         viewModelScope.launch {
             try {
                 repository.fetchItemList(offset = currentOffset, limit = PAGE_SIZE)
                 currentOffset += PAGE_SIZE
-            } catch (_: Exception) {
-                // Handled by leaving the list as-is; user can retry via loadMore.
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _listError.value = e.message ?: "Could not load items"
             } finally {
                 isFetching = false
             }

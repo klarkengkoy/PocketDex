@@ -36,11 +36,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -134,10 +136,12 @@ fun PokemonDetailScreen(
         // Persist the last successful family tree to prevent the carousel from 
         // flickering/resetting when swiping between members of the same family.
         var lastValidEvolutions by remember { mutableStateOf<List<EvolutionNode>>(emptyList()) }
-        
+
         // STABLE CONTAINER: Persist the last successful Pokémon data to prevent the screen
         // from blinking or emptying during loading states.
         var displayPokemon by remember { mutableStateOf<PokemonDetailModel?>(null) }
+        val selectedEvolutions = remember(displayPokemon?.chainId) { mutableStateMapOf<String, String>() }
+        var branchScrollDirection by remember { mutableStateOf(1) }
         var currentSwipedId by remember(pokemonId) { mutableStateOf(pokemonId) }
         
         LaunchedEffect(state) {
@@ -227,11 +231,20 @@ fun PokemonDetailScreen(
                                 .padding(24.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = "ERROR: ${state.message}", color = MaterialTheme.colorScheme.error)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = "ERROR: ${state.message}", color = MaterialTheme.colorScheme.error)
+                                TextButton(onClick = viewModel::retryPokemonDetail) { Text("RETRY") }
+                            }
                         }
                     }
 
                     else -> {
+                        (state as? PokemonDetailUiState.Success)?.errorMessage?.let { message ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = "ERROR: $message", color = MaterialTheme.colorScheme.error)
+                                TextButton(onClick = viewModel::retryPokemonDetail) { Text("RETRY") }
+                            }
+                        }
                         // Success OR (Loading + we have cached family tree)
                         val evolutions = if (state is PokemonDetailUiState.Success) {
                             state.pokemon.evolutions
@@ -250,9 +263,19 @@ fun PokemonDetailScreen(
                                 )
                             )
                         }
+                        val evolutionPath = displayList.evolutionPath(currentDisplayId, selectedEvolutions)
+                        val branchChoices = displayList.evolutionSiblings(currentDisplayId)
+                        val branchParent = displayList.evolutionParent(currentDisplayId)
+                        val onBranchSelected: (String, Boolean) -> Unit = { id, forward ->
+                            branchParent?.let { selectedEvolutions[it.id] = id }
+                            branchScrollDirection = if (forward) 1 else -1
+                            currentSwipedId = id
+                            viewModel.loadPokemonDetail(id)
+                            viewModel.activePokemonId.value = id
+                        }
 
                         EvolutionCarousel(
-                            evolutions = displayList,
+                            evolutions = evolutionPath,
                             pokemonId = pokemonId,
                             currentDisplayId = currentDisplayId,
                             screenWidth = screenWidth,
@@ -267,8 +290,16 @@ fun PokemonDetailScreen(
                                 viewModel.loadPokemonDetail(id)
                                 viewModel.activePokemonId.value = id
                             },
+                            canSwitchBranchVertically = branchChoices.size > 1,
+                            branchScrollDirection = branchScrollDirection,
+                            onVerticalBranchChange = { forward ->
+                                val next = displayList.nextEvolutionSibling(currentDisplayId, forward)
+                                if (next != null) onBranchSelected(next.id, forward)
+                            },
                             onBack = onBack
                         )
+
+
                     }
                 }
 

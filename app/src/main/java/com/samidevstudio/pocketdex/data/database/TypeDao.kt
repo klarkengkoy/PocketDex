@@ -17,12 +17,18 @@ interface TypeDao {
     @Query("SELECT * FROM type_detail WHERE name = :name")
     suspend fun getType(name: String): TypeEntity?
 
-    @Query("SELECT COUNT(*) FROM type_detail")
-    suspend fun getTypeCount(): Int
+    @Query("SELECT name FROM type_detail")
+    suspend fun getTypeNames(): List<String>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTypes(types: List<TypeEntity>)
 
     @Query("DELETE FROM type_detail")
     suspend fun clearTypes()
+
+    @androidx.room.Transaction
+    suspend fun replaceTypes(types: List<TypeEntity>) {
+        clearTypes()
+        insertTypes(types)
+    }
 }

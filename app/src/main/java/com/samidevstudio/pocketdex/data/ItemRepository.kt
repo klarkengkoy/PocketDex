@@ -45,8 +45,6 @@ class DefaultItemRepository @Inject constructor(
             itemDao.insertItemList(
                 response.results.map { ItemListEntity(id = it.id, name = it.name) }
             )
-        } catch (_: Exception) {
-            // List stays at whatever was cached; user can pull to retry via loadMore.
         } finally {
             inFlightListFetches.remove(fetchKey)
         }
@@ -91,8 +89,6 @@ class DefaultItemRepository @Inject constructor(
                 )
             )
             itemDao.updateItemCategory(id, detail.category.name)
-        } catch (_: Exception) {
-            // Handled by leaving the Flow null; the ViewModel keeps showing loading/retry.
         } finally {
             inFlightDetailSyncs.remove(id)
         }

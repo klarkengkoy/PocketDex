@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -47,12 +48,19 @@ fun TypeListScreen(
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            is TypeListUiState.Error -> Text(
-                "ERROR: ${current.message}",
-                fontFamily = FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.error
-            )
+            is TypeListUiState.Error -> Column {
+                Text(
+                    "ERROR: ${current.message}",
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.error
+                )
+                TextButton(onClick = viewModel::retrySync) { Text("RETRY") }
+            }
             is TypeListUiState.Success -> {
+                current.errorMessage?.let { message ->
+                    Text(message, color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = viewModel::retrySync) { Text("RETRY") }
+                }
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     contentPadding = PaddingValues(bottom = 180.dp),

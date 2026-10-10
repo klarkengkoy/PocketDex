@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -80,12 +81,19 @@ fun TeamPokemonSelectScreen(
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            is PokemonListUiState.Error -> Text(
-                "ERROR: ${current.message}",
-                fontFamily = FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.error
-            )
+            is PokemonListUiState.Error -> Column {
+                Text(
+                    "ERROR: ${current.message}",
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.error
+                )
+                TextButton(onClick = pokemonViewModel::retryLoad) { Text("RETRY") }
+            }
             is PokemonListUiState.Success -> {
+                current.errorMessage?.let { message ->
+                    Text(message, color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = pokemonViewModel::retryLoad) { Text("RETRY") }
+                }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 180.dp),

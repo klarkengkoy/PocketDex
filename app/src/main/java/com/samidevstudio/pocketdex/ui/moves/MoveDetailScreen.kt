@@ -15,6 +15,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -67,11 +68,14 @@ fun MoveDetailScreen(
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                is MoveDetailUiState.Error -> Text(
-                    "ERROR: ${current.message}",
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.error
-                )
+                is MoveDetailUiState.Error -> Column {
+                    Text(
+                        "ERROR: ${current.message}",
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    TextButton(onClick = viewModel::retryMoveDetail) { Text("RETRY") }
+                }
                 is MoveDetailUiState.Success -> {
                     val move = current.move
                     DetailTypeBadge(type = move.typeName)

@@ -45,8 +45,6 @@ class DefaultMoveRepository @Inject constructor(
             moveDao.insertMoveList(
                 response.results.map { MoveListEntity(id = it.id, name = it.name) }
             )
-        } catch (_: Exception) {
-            // Swallowed intentionally for now: list stays whatever was cached, UI shows no new page.
         } finally {
             inFlightListFetches.remove(fetchKey)
         }
@@ -100,8 +98,6 @@ class DefaultMoveRepository @Inject constructor(
                     effectChance = detail.effectChance
                 )
             )
-        } catch (_: Exception) {
-            // Handled by leaving the Flow null; the ViewModel keeps showing loading/retry.
         } finally {
             inFlightDetailSyncs.remove(id)
         }

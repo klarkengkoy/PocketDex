@@ -18,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -64,13 +65,20 @@ fun MoveListScreen(
                 )
             }
             is MoveListUiState.Error -> {
-                Text(
-                    text = "ERROR: ${current.message}",
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.error
-                )
+                Column {
+                    Text(
+                        text = "ERROR: ${current.message}",
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    TextButton(onClick = viewModel::retryLoad) { Text("RETRY") }
+                }
             }
             is MoveListUiState.Success -> {
+                current.errorMessage?.let { message ->
+                    Text(message, color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = viewModel::retryLoad) { Text("RETRY") }
+                }
                 if (current.moves.isEmpty()) {
                     Text(
                         text = "No moves found.",

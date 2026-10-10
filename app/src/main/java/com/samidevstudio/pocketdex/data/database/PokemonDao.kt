@@ -29,6 +29,9 @@ interface PokemonDao {
     @Query("UPDATE pokemon SET types = :types WHERE id = :id")
     suspend fun updatePokemonTypes(id: String, types: List<String>)
 
+    @Query("SELECT types FROM pokemon WHERE id = :id")
+    suspend fun getPokemonTypes(id: String): List<String>?
+
     @Query("SELECT id FROM pokemon WHERE types = '[]' ORDER BY CAST(id AS INTEGER) ASC LIMIT 100")
     suspend fun getPokemonIdsMissingTypes(): List<String>
 

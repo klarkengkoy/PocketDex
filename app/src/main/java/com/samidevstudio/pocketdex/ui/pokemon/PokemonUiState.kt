@@ -32,7 +32,8 @@ data class PokemonDetailModel(
 data class EvolutionNode(
     val id: String,
     val name: String,
-    val imageUrl: String
+    val imageUrl: String,
+    val evolvesTo: List<EvolutionNode> = emptyList()
 )
 
 @Immutable
@@ -44,12 +45,12 @@ data class StatInfo(
 
 sealed interface PokemonListUiState {
     data object Loading : PokemonListUiState
-    data class Success(val pokemonList: List<PokemonUiModel>) : PokemonListUiState
+    data class Success(val pokemonList: List<PokemonUiModel>, val errorMessage: String? = null) : PokemonListUiState
     data class Error(val message: String) : PokemonListUiState
 }
 
 sealed interface PokemonDetailUiState {
     data object Loading : PokemonDetailUiState
-    data class Success(val pokemon: PokemonDetailModel) : PokemonDetailUiState
+    data class Success(val pokemon: PokemonDetailModel, val errorMessage: String? = null) : PokemonDetailUiState
     data class Error(val message: String) : PokemonDetailUiState
 }

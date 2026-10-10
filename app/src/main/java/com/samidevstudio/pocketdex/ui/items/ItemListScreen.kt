@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -18,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -41,6 +43,7 @@ fun ItemListScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -61,12 +64,19 @@ fun ItemListScreen(
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            is ItemListUiState.Error -> Text(
-                "ERROR: ${current.message}",
-                fontFamily = FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.error
-            )
+            is ItemListUiState.Error -> Column {
+                Text(
+                    "ERROR: ${current.message}",
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.error
+                )
+                TextButton(onClick = viewModel::retryLoad) { Text("RETRY") }
+            }
             is ItemListUiState.Success -> {
+                current.errorMessage?.let { message ->
+                    Text(message, color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = viewModel::retryLoad) { Text("RETRY") }
+                }
                 if (current.items.isEmpty()) {
                     Text(
                         text = "No items found.",

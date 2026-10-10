@@ -31,33 +31,24 @@ class DefaultTypeRepository @Inject constructor(
         isSyncing = true
 
         try {
-            // Types are a small, fixed roster (~20) - skip the network round trip if already cached.
-            if (typeDao.getTypeCount() > 0) return
+            val roster = apiService.getTypeList().results
+            if (typeDao.getTypeNames().toSet() == roster.map { it.name }.toSet()) return
 
-            val listResponse = apiService.getTypeList()
-            val entities = listResponse.results.mapNotNull { item ->
-                try {
-                    val detail = apiService.getTypeDetail(item.id)
-                    TypeEntity(
-                        name = detail.name,
-                        doubleDamageFrom = detail.damageRelations.doubleDamageFrom.map { it.name },
-                        doubleDamageTo = detail.damageRelations.doubleDamageTo.map { it.name },
-                        halfDamageFrom = detail.damageRelations.halfDamageFrom.map { it.name },
-                        halfDamageTo = detail.damageRelations.halfDamageTo.map { it.name },
-                        noDamageFrom = detail.damageRelations.noDamageFrom.map { it.name },
-                        noDamageTo = detail.damageRelations.noDamageTo.map { it.name },
-                        pokemonNames = detail.pokemon.map { it.pokemon.name }
-                    )
-                } catch (_: Exception) {
-                    null
-                }
+            // Replace the cache only after every detail succeeds, so a partial response is never marked complete.
+            val entities = roster.map { item ->
+                val detail = apiService.getTypeDetail(item.id)
+                TypeEntity(
+                    name = detail.name,
+                    doubleDamageFrom = detail.damageRelations.doubleDamageFrom.map { it.name },
+                    doubleDamageTo = detail.damageRelations.doubleDamageTo.map { it.name },
+                    halfDamageFrom = detail.damageRelations.halfDamageFrom.map { it.name },
+                    halfDamageTo = detail.damageRelations.halfDamageTo.map { it.name },
+                    noDamageFrom = detail.damageRelations.noDamageFrom.map { it.name },
+                    noDamageTo = detail.damageRelations.noDamageTo.map { it.name },
+                    pokemonNames = detail.pokemon.map { it.pokemon.name }
+                )
             }
-
-            if (entities.isNotEmpty()) {
-                typeDao.insertTypes(entities)
-            }
-        } catch (_: Exception) {
-            // Leaves the type table empty; caller retries by observing an empty flow.
+            typeDao.replaceTypes(entities)
         } finally {
             isSyncing = false
         }
