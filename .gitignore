@@ -14,12 +14,13 @@
 .cxx
 local.properties
 
-# Private project log, should not be committed.
-DEVELOPER_DIARY.md
-
-# Agent and Artifact metadata
+# Agent, artifact, and local reference metadata
 .artifacts/
 .agent/
+.docs/
+.notes/
+docs/
+notes/
 
 # Keep local Copilot instructions untracked
 .github/
