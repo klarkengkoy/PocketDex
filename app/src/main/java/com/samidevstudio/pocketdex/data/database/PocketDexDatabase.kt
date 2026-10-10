@@ -19,7 +19,7 @@ import androidx.room.TypeConverters
         TeamMemberEntity::class
     ],
     version = 3,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(PokemonConverters::class)
 abstract class PocketDexDatabase : RoomDatabase() {
@@ -36,7 +36,6 @@ abstract class PocketDexDatabase : RoomDatabase() {
         fun getDatabase(context: Context): PocketDexDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, PocketDexDatabase::class.java, "pocketdex_database")
-                    .fallbackToDestructiveMigration(true)
                     .build()
                     .also { Instance = it }
             }

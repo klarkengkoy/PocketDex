@@ -17,6 +17,6 @@ interface TeamDao {
     @Query("DELETE FROM team_members WHERE position = :position")
     suspend fun removeTeamMember(position: Int)
 
-    @Query("SELECT COUNT(*) FROM team_members")
-    suspend fun getTeamSize(): Int
+    @Query("SELECT position FROM team_members")
+    suspend fun getTeamPositions(): List<Int>
 }

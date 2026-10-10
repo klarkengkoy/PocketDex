@@ -48,9 +48,8 @@ class DefaultTeamRepository @Inject constructor(
         replacePosition: Int?
     ): Boolean {
         val targetPosition = replacePosition ?: run {
-            val currentSize = teamDao.getTeamSize()
-            if (currentSize >= MAX_TEAM_SIZE) return false
-            currentSize
+            val occupiedPositions = teamDao.getTeamPositions().toSet()
+            (0 until MAX_TEAM_SIZE).firstOrNull { it !in occupiedPositions } ?: return false
         }
 
         teamDao.upsertTeamMember(
