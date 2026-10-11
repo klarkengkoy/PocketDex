@@ -34,10 +34,10 @@ class AccessibilityTest {
     @Test
     fun verifyNavTabContentDescriptions() {
         // Verify all bottom tabs have content descriptions for accessibility
+        composeTestRule.onNodeWithContentDescription("Explore").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Moves").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Types").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Items").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Team").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Team Lab").assertIsDisplayed()
         
         // Verify central Pokeball
         composeTestRule.onNodeWithContentDescription("Pokedex List").assertIsDisplayed()

@@ -2,6 +2,7 @@ package com.samidevstudio.pocketdex.ui.types
 
 import androidx.compose.runtime.Immutable
 import com.samidevstudio.pocketdex.domain.TypeMatchupSummary
+import com.samidevstudio.pocketdex.ui.pokemon.PokemonUiModel
 
 @Immutable
 data class TypeListModel(
@@ -12,7 +13,7 @@ data class TypeListModel(
 data class TypeDetailModel(
     val name: String,
     val matchups: TypeMatchupSummary,
-    val pokemonNames: List<String>
+    val pokemon: List<PokemonUiModel>
 )
 
 sealed interface TypeListUiState {

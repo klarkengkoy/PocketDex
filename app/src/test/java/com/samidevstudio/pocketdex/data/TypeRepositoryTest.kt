@@ -24,6 +24,7 @@ class TypeRepositoryTest {
         DefaultTypeRepository(api, dao).syncAllTypes()
 
         assertEquals(listOf("fire", "water"), dao.types.map { it.name })
+        assertEquals(listOf("4|charmander"), dao.types.single { it.name == "fire" }.pokemonNames)
         assertEquals(2, api.detailCalls)
     }
 
@@ -35,6 +36,19 @@ class TypeRepositoryTest {
 
         assertEquals(listOf("fire", "water"), dao.types.map { it.name }.sorted())
         assertEquals(2, api.detailCalls)
+    }
+
+    @Test
+    fun legacyCacheRefreshesPokemonReferencesWithIds() = runBlocking {
+        val api = FakeTypeApi()
+        val dao = FakeTypeDao(
+            TypeEntity("fire", emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), listOf("charmander")),
+            TypeEntity("water", emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
+        )
+        DefaultTypeRepository(api, dao).syncAllTypes()
+
+        assertEquals(2, api.detailCalls)
+        assertEquals(listOf("4|charmander"), dao.types.single { it.name == "fire" }.pokemonNames)
     }
 
     @Test
@@ -91,7 +105,7 @@ class TypeRepositoryTest {
         override fun getAllTypesFlow(): Flow<List<TypeEntity>> = emptyFlow()
         override fun getTypeFlow(name: String): Flow<TypeEntity?> = emptyFlow()
         override suspend fun getType(name: String): TypeEntity? = types.firstOrNull { it.name == name }
-        override suspend fun getTypeNames(): List<String> = types.map { it.name }
+        override suspend fun getAllTypes(): List<TypeEntity> = types
         override suspend fun insertTypes(types: List<TypeEntity>) { this.types = types }
         override suspend fun replaceTypes(types: List<TypeEntity>) { this.types = types }
         override suspend fun clearTypes() { types = emptyList() }
@@ -115,7 +129,16 @@ class TypeRepositoryTest {
             return TypeDetail(
                 id = id.toInt(),
                 name = if (id == "1") "fire" else "water",
-                damageRelations = TypeDamageRelations()
+                damageRelations = TypeDamageRelations(),
+                pokemon = if (id == "1") {
+                    listOf(
+                        TypePokemonSlot(
+                            NamedApiResource("charmander", "https://example.com/pokemon/4/")
+                        )
+                    )
+                } else {
+                    emptyList()
+                }
             )
         }
 
@@ -127,5 +150,13 @@ class TypeRepositoryTest {
         override suspend fun getMoveDetail(id: String): MoveDetail = error("unused")
         override suspend fun getItemList(limit: Int, offset: Int): ItemListResponse = error("unused")
         override suspend fun getItemDetail(id: String): ItemDetail = error("unused")
+        override suspend fun getAbilityList(limit: Int, offset: Int): AbilityListResponse = error("unused")
+        override suspend fun getAbilityDetail(id: String): AbilityDetail = error("unused")
+        override suspend fun getBerryList(limit: Int, offset: Int): BerryListResponse = error("unused")
+        override suspend fun getBerryDetail(id: String): BerryDetail = error("unused")
+        override suspend fun getRegionList(limit: Int, offset: Int): RegionListResponse = error("unused")
+        override suspend fun getRegionDetail(id: String): RegionDetail = error("unused")
+        override suspend fun getLocationList(limit: Int, offset: Int): LocationListResponse = error("unused")
+        override suspend fun getLocationDetail(id: String): LocationDetail = error("unused")
     }
 }

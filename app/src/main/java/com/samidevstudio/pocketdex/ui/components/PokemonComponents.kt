@@ -4,14 +4,17 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,41 +25,81 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.samidevstudio.pocketdex.ui.theme.PokemonTypeColors
 
 @Composable
-fun DetailTypeBadge(type: String) {
+fun DetailTypeBadge(
+    type: String,
+    label: String = type,
+    onClick: (() -> Unit)? = null
+) {
     val colors = PokemonTypeColors.map[type.lowercase()] ?: (Color.Gray to Color.Gray)
+    val whiteContrast = minOf(
+        contrastRatio(colors.first, Color.White),
+        contrastRatio(colors.second, Color.White)
+    )
+    val blackContrast = minOf(
+        contrastRatio(colors.first, Color.Black),
+        contrastRatio(colors.second, Color.Black)
+    )
+    val textColor = if (whiteContrast >= blackContrast) Color.White else Color.Black
 
     val brush = Brush.verticalGradient(
         0.5f to colors.first,
         0.5f to colors.second
     )
+    val clickModifier = onClick?.let { click ->
+        Modifier
+            .heightIn(min = 48.dp)
+            .clickable(
+                role = Role.Button,
+                onClickLabel = "Open ${type.lowercase()} type details",
+                onClick = click
+            )
+    } ?: Modifier
 
-    Surface(
-        color = Color.Transparent,
-        shape = RectangleShape,
-        modifier = Modifier
-            .width(90.dp)
-            .background(brush)
-            .border(1.dp, MaterialTheme.colorScheme.onSurface, RectangleShape)
+    Box(
+        modifier = clickModifier,
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = type.uppercase(),
-            color = Color.White,
-            style = MaterialTheme.typography.labelMedium,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
+        Surface(
+            color = Color.Transparent,
+            shape = RectangleShape,
             modifier = Modifier
-                .padding(vertical = 4.dp)
-        )
+                .widthIn(min = 90.dp)
+                .background(brush)
+                .border(1.dp, MaterialTheme.colorScheme.onSurface, RectangleShape)
+        ) {
+            Text(
+                text = label.uppercase(),
+                color = textColor,
+                style = MaterialTheme.typography.labelMedium,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        }
     }
+}
+
+private fun contrastRatio(background: Color, foreground: Color): Float {
+    val backgroundLuminance = background.luminance()
+    val foregroundLuminance = foreground.luminance()
+    val lighter = maxOf(backgroundLuminance, foregroundLuminance)
+    val darker = minOf(backgroundLuminance, foregroundLuminance)
+    return (lighter + 0.05f) / (darker + 0.05f)
 }
 
 @Composable

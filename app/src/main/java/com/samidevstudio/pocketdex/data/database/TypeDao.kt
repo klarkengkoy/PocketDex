@@ -17,8 +17,8 @@ interface TypeDao {
     @Query("SELECT * FROM type_detail WHERE name = :name")
     suspend fun getType(name: String): TypeEntity?
 
-    @Query("SELECT name FROM type_detail")
-    suspend fun getTypeNames(): List<String>
+     @Query("SELECT * FROM type_detail")
+    suspend fun getAllTypes(): List<TypeEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTypes(types: List<TypeEntity>)

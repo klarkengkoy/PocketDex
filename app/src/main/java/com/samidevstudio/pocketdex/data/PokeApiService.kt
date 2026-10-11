@@ -69,4 +69,48 @@ interface PokeApiService {
     suspend fun getItemDetail(
         @Path("id") id: String
     ): ItemDetail
+
+    @GET("ability")
+    suspend fun getAbilityList(
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0
+    ): AbilityListResponse
+
+    @GET("ability/{id}")
+    suspend fun getAbilityDetail(
+        @Path("id") id: String
+    ): AbilityDetail
+
+    @GET("berry")
+    suspend fun getBerryList(
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0
+    ): BerryListResponse
+
+    @GET("berry/{id}")
+    suspend fun getBerryDetail(
+        @Path("id") id: String
+    ): BerryDetail
+
+    @GET("region")
+    suspend fun getRegionList(
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0
+    ): RegionListResponse
+
+    @GET("region/{id}")
+    suspend fun getRegionDetail(
+        @Path("id") id: String
+    ): RegionDetail
+
+    @GET("location")
+    suspend fun getLocationList(
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0
+    ): LocationListResponse
+
+    @GET("location/{id}")
+    suspend fun getLocationDetail(
+        @Path("id") id: String
+    ): LocationDetail
 }

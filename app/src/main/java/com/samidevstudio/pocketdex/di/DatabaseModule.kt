@@ -1,10 +1,14 @@
 package com.samidevstudio.pocketdex.di
 
 import android.content.Context
+import com.samidevstudio.pocketdex.data.database.AbilityDao
+import com.samidevstudio.pocketdex.data.database.BerryDao
 import com.samidevstudio.pocketdex.data.database.ItemDao
+import com.samidevstudio.pocketdex.data.database.LocationDao
 import com.samidevstudio.pocketdex.data.database.MoveDao
 import com.samidevstudio.pocketdex.data.database.PocketDexDatabase
 import com.samidevstudio.pocketdex.data.database.PokemonDao
+import com.samidevstudio.pocketdex.data.database.RegionDao
 import com.samidevstudio.pocketdex.data.database.TeamDao
 import com.samidevstudio.pocketdex.data.database.TypeDao
 import dagger.Module
@@ -37,4 +41,16 @@ object DatabaseModule {
 
     @Provides
     fun provideTeamDao(database: PocketDexDatabase): TeamDao = database.teamDao()
+
+    @Provides
+    fun provideAbilityDao(database: PocketDexDatabase): AbilityDao = database.abilityDao()
+
+    @Provides
+    fun provideBerryDao(database: PocketDexDatabase): BerryDao = database.berryDao()
+
+    @Provides
+    fun provideRegionDao(database: PocketDexDatabase): RegionDao = database.regionDao()
+
+    @Provides
+    fun provideLocationDao(database: PocketDexDatabase): LocationDao = database.locationDao()
 }

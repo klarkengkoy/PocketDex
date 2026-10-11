@@ -24,6 +24,23 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
+import com.samidevstudio.pocketdex.ui.ability.AbilityDetailScreen
+import com.samidevstudio.pocketdex.ui.ability.AbilityListModel
+import com.samidevstudio.pocketdex.ui.ability.AbilityListScreen
+import com.samidevstudio.pocketdex.ui.ability.AbilityViewModel
+import com.samidevstudio.pocketdex.ui.berry.BerryDetailScreen
+import com.samidevstudio.pocketdex.ui.berry.BerryListModel
+import com.samidevstudio.pocketdex.ui.berry.BerryListScreen
+import com.samidevstudio.pocketdex.ui.berry.BerryViewModel
+import com.samidevstudio.pocketdex.ui.explore.EvolutionFamilyScreen
+import com.samidevstudio.pocketdex.ui.explore.EvolutionLookupScreen
+import com.samidevstudio.pocketdex.ui.explore.ExploreScreen
+import com.samidevstudio.pocketdex.ui.region.RegionDetailScreen
+import com.samidevstudio.pocketdex.ui.region.RegionListModel
+import com.samidevstudio.pocketdex.ui.region.RegionListScreen
+import com.samidevstudio.pocketdex.ui.region.RegionViewModel
+import com.samidevstudio.pocketdex.ui.location.LocationDetailScreen
+import com.samidevstudio.pocketdex.ui.location.LocationViewModel
 import com.samidevstudio.pocketdex.ui.items.ItemDetailScreen
 import com.samidevstudio.pocketdex.ui.items.ItemListModel
 import com.samidevstudio.pocketdex.ui.items.ItemListScreen
@@ -89,6 +106,50 @@ sealed interface PokedexRoute : NavKey, Parcelable {
 
     @Serializable
     @Parcelize
+    data object Explore : PokedexRoute
+
+    @Serializable
+    @Parcelize
+    data object Evolutions : PokedexRoute
+
+    @Serializable
+    @Parcelize
+    data class EvolutionDetail(val pokemonId: String, val pokemonName: String) : PokedexRoute
+
+    @Serializable
+    @Parcelize
+    data object Abilities : PokedexRoute
+
+    @Serializable
+    @Parcelize
+    data class AbilityDetail(val abilityId: String, val abilityName: String) : PokedexRoute
+
+    @Serializable
+    @Parcelize
+    data object Berries : PokedexRoute
+
+    @Serializable
+    @Parcelize
+    data class BerryDetail(val berryId: String, val berryName: String) : PokedexRoute
+
+    @Serializable
+    @Parcelize
+    data object Regions : PokedexRoute
+
+    @Serializable
+    @Parcelize
+    data class RegionDetail(val regionId: String, val regionName: String) : PokedexRoute
+
+    @Serializable
+    @Parcelize
+    data object Locations : PokedexRoute
+
+    @Serializable
+    @Parcelize
+    data class LocationDetail(val locationId: String, val locationName: String) : PokedexRoute
+
+    @Serializable
+    @Parcelize
     data object Moves : PokedexRoute
 
     @Serializable
@@ -117,7 +178,7 @@ sealed interface PokedexRoute : NavKey, Parcelable {
 
     @Serializable
     @Parcelize
-    data class TeamPokemonSelect(val replacePosition: Int? = null) : PokedexRoute
+    data class TeamPokemonSelect(val replacePosition: Int? = null, val compareSlot: Int? = null) : PokedexRoute
 }
 
 @Composable
@@ -132,6 +193,10 @@ fun MainNavigation(
     val typeViewModel: TypeViewModel = hiltViewModel()
     val itemViewModel: ItemViewModel = hiltViewModel()
     val teamViewModel: TeamViewModel = hiltViewModel()
+    val abilityViewModel: AbilityViewModel = hiltViewModel()
+    val berryViewModel: BerryViewModel = hiltViewModel()
+    val regionViewModel: RegionViewModel = hiltViewModel()
+    val locationViewModel: LocationViewModel = hiltViewModel()
 
     SharedTransitionLayout(modifier = modifier) {
         NavDisplay(
@@ -216,19 +281,134 @@ fun MainNavigation(
                     )
                 }
 
+                entry<PokedexRoute.Explore> {
+                    ExploreScreen(
+                        onTypesClick = {
+                            backStack.add(PokedexRoute.Types)
+                        },
+                        onAbilitiesClick = {
+                            backStack.add(PokedexRoute.Abilities)
+                        },
+                        onBerriesClick = {
+                            backStack.add(PokedexRoute.Berries)
+                        },
+                        onRegionsClick = {
+                            backStack.add(PokedexRoute.Regions)
+                        },
+                        onEvolutionsClick = {
+                            backStack.add(PokedexRoute.Evolutions)
+                        }
+                    )
+                }
+
+                entry<PokedexRoute.Evolutions> {
+                    EvolutionLookupScreen(
+                        pokemonViewModel = pokemonViewModel,
+                        onPokemonSelect = { id, name ->
+                            backStack.add(PokedexRoute.EvolutionDetail(id, name))
+                        },
+                        onBack = onBack
+                    )
+                }
+                entry<PokedexRoute.EvolutionDetail> { route ->
+                    EvolutionFamilyScreen(
+                        pokemonId = route.pokemonId,
+                        pokemonName = route.pokemonName,
+                        pokemonViewModel = pokemonViewModel,
+                        onBack = onBack,
+                        onPokemonClick = { id, name ->
+                            backStack.selectEvolutionPokemon(id, name)
+                        }
+                    )
+                }
+
+                entry<PokedexRoute.Abilities> {
+                    AbilityListScreen(
+                        viewModel = abilityViewModel,
+                        onAbilityClick = { ability: AbilityListModel ->
+                            backStack.add(PokedexRoute.AbilityDetail(ability.id, ability.name))
+                        },
+                        onBack = onBack
+                    )
+                }
+                entry<PokedexRoute.AbilityDetail> { route ->
+                    AbilityDetailScreen(
+                        abilityId = route.abilityId,
+                        abilityName = route.abilityName,
+                        viewModel = abilityViewModel,
+                        onBack = onBack,
+                        onPokemonClick = { pokemon ->
+                            backStack.add(PokedexRoute.Detail(pokemon.id, pokemon.name))
+                        }
+                    )
+                }
+
+                entry<PokedexRoute.Berries> {
+                    BerryListScreen(
+                        viewModel = berryViewModel,
+                        onBerryClick = { berry: BerryListModel ->
+                            backStack.add(PokedexRoute.BerryDetail(berry.id, berry.name))
+                        },
+                        onBack = onBack
+                    )
+                }
+                entry<PokedexRoute.BerryDetail> { route ->
+                    BerryDetailScreen(
+                        berryId = route.berryId,
+                        berryName = route.berryName,
+                        viewModel = berryViewModel,
+                        onBack = onBack
+                    )
+                }
+
+                entry<PokedexRoute.Regions> {
+                    RegionListScreen(
+                        viewModel = regionViewModel,
+                        onRegionClick = { region: RegionListModel ->
+                            backStack.add(PokedexRoute.RegionDetail(region.id, region.name))
+                        },
+                        onBack = onBack
+                    )
+                }
+                entry<PokedexRoute.RegionDetail> { route ->
+                    RegionDetailScreen(
+                        regionId = route.regionId,
+                        regionName = route.regionName,
+                        viewModel = regionViewModel,
+                        onBack = onBack,
+                        onLocationClick = { loc ->
+                            backStack.selectLocationDetail(loc, loc)
+                        }
+                    )
+                }
+                entry<PokedexRoute.LocationDetail> { route ->
+                    LocationDetailScreen(
+                        locationId = route.locationId,
+                        locationName = route.locationName,
+                        viewModel = locationViewModel,
+                        onBack = onBack
+                    )
+                }
+
                 entry<PokedexRoute.Types> {
                     TypeListScreen(
                         viewModel = typeViewModel,
                         onTypeClick = { type: TypeListModel ->
-                            backStack.add(PokedexRoute.TypeDetail(type.name))
-                        }
+                            backStack.selectTypeDetail(type.name)
+                        },
+                        onBack = onBack
                     )
                 }
                 entry<PokedexRoute.TypeDetail> { route ->
                     TypeDetailScreen(
                         typeName = route.typeName,
                         viewModel = typeViewModel,
-                        onBack = onBack
+                        onBack = onBack,
+                        onRetry = typeViewModel::retrySync,
+                        onTypeClick = { typeName -> backStack.selectTypeDetail(typeName) },
+                        onPokemonClick = { pokemon ->
+                            backStack.add(PokedexRoute.Detail(pokemon.id, pokemon.name))
+                        }
                     )
                 }
 
@@ -253,10 +433,13 @@ fun MainNavigation(
                     TeamScreen(
                         viewModel = teamViewModel,
                         onAddPokemon = { replacePosition ->
-                            backStack.add(PokedexRoute.TeamPokemonSelect(replacePosition))
+                            backStack.add(PokedexRoute.TeamPokemonSelect(replacePosition = replacePosition))
                         },
                         onPokemonClick = { pokemonId, pokemonName ->
                             backStack.add(PokedexRoute.Detail(pokemonId, pokemonName))
+                        },
+                        onCompareSelect = { compareSlot ->
+                            backStack.add(PokedexRoute.TeamPokemonSelect(compareSlot = compareSlot))
                         }
                     )
                 }
@@ -264,14 +447,19 @@ fun MainNavigation(
                     TeamPokemonSelectScreen(
                         pokemonViewModel = pokemonViewModel,
                         replacePosition = route.replacePosition,
+                        compareSlot = route.compareSlot,
                         onSelect = { pokemon ->
-                            teamViewModel.addOrReplace(
-                                pokemonId = pokemon.id,
-                                pokemonName = pokemon.name,
-                                imageUrl = pokemon.imageUrl,
-                                types = pokemon.types,
-                                replacePosition = route.replacePosition
-                            )
+                            if (route.compareSlot != null) {
+                                teamViewModel.selectComparePokemon(route.compareSlot, pokemon.id)
+                            } else {
+                                teamViewModel.addOrReplace(
+                                    pokemonId = pokemon.id,
+                                    pokemonName = pokemon.name,
+                                    imageUrl = pokemon.imageUrl,
+                                    types = pokemon.types,
+                                    replacePosition = route.replacePosition
+                                )
+                            }
                         },
                         onBack = onBack
                     )
@@ -279,4 +467,26 @@ fun MainNavigation(
             }
         )
     }
+}
+
+internal fun MutableList<NavKey>.selectTypeDetail(typeName: String) {
+    val selectedRoute = PokedexRoute.TypeDetail(typeName)
+    if (lastOrNull() is PokedexRoute.TypeDetail) {
+        this[lastIndex] = selectedRoute
+    } else {
+        add(selectedRoute)
+    }
+}
+
+internal fun MutableList<NavKey>.selectEvolutionPokemon(id: String, name: String) {
+    val selectedRoute = PokedexRoute.EvolutionDetail(id, name)
+    if (lastOrNull() is PokedexRoute.EvolutionDetail) {
+        this[lastIndex] = selectedRoute
+    } else {
+        add(selectedRoute)
+    }
+}
+
+internal fun MutableList<NavKey>.selectLocationDetail(id: String, name: String) {
+    add(PokedexRoute.LocationDetail(id, name))
 }

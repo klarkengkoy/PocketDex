@@ -18,8 +18,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Backpack
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material3.Icon
@@ -105,23 +105,23 @@ fun PocketDexApp() {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 NavTabItem(
+                                    icon = Icons.Default.Explore,
+                                    label = "Explore",
+                                    indication = retroIndication,
+                                    selected = currentRoute is PokedexRoute.Explore || currentRoute is PokedexRoute.Types || currentRoute is PokedexRoute.TypeDetail || currentRoute is PokedexRoute.Abilities || currentRoute is PokedexRoute.AbilityDetail || currentRoute is PokedexRoute.Berries || currentRoute is PokedexRoute.BerryDetail || currentRoute is PokedexRoute.Regions || currentRoute is PokedexRoute.RegionDetail || currentRoute is PokedexRoute.Evolutions || currentRoute is PokedexRoute.EvolutionDetail,
+                                    onClick = { 
+                                        backStack.clear()
+                                        backStack.add(PokedexRoute.Explore)
+                                    }
+                                )
+                                NavTabItem(
                                     icon = Icons.Default.SportsMartialArts,
                                     label = "Moves",
                                     indication = retroIndication,
                                     selected = currentRoute is PokedexRoute.Moves || currentRoute is PokedexRoute.MoveDetail,
                                     onClick = { 
                                         backStack.clear()
-                                        backStack.add(PokedexRoute.Moves) 
-                                    }
-                                )
-                                NavTabItem(
-                                    icon = Icons.Default.AutoStories,
-                                    label = "Types",
-                                    indication = retroIndication,
-                                    selected = currentRoute is PokedexRoute.Types || currentRoute is PokedexRoute.TypeDetail,
-                                    onClick = { 
-                                        backStack.clear()
-                                        backStack.add(PokedexRoute.Types) 
+                                        backStack.add(PokedexRoute.Moves)
                                     }
                                 )
                                 
@@ -140,7 +140,7 @@ fun PocketDexApp() {
                                 )
                                 NavTabItem(
                                     icon = Icons.Default.Groups,
-                                    label = "Team",
+                                    label = "Team Lab",
                                     indication = retroIndication,
                                     selected = currentRoute is PokedexRoute.Team || currentRoute is PokedexRoute.TeamPokemonSelect,
                                     onClick = { 

@@ -4,6 +4,11 @@ package com.samidevstudio.pocketdex.domain
  * Plain data carrier for a single type's damage relations, decoupled from the
  * Room entity so the domain layer has no Android/Room dependency.
  */
+data class TypePokemonReference(
+    val id: String,
+    val name: String
+)
+
 data class TypeRelations(
     val name: String,
     val doubleDamageFrom: Set<String>,
@@ -12,7 +17,8 @@ data class TypeRelations(
     val halfDamageTo: Set<String>,
     val noDamageFrom: Set<String>,
     val noDamageTo: Set<String>,
-    val pokemonNames: List<String> = emptyList()
+    val pokemonReferences: List<TypePokemonReference> = emptyList(),
+    val hasIncompletePokemonReferences: Boolean = false
 )
 
 enum class Effectiveness { IMMUNE, RESISTANT, NEUTRAL, WEAK }
@@ -28,6 +34,12 @@ data class TypeMatchupSummary(
     val weaknesses: List<String>,
     val resistances: List<String>,
     val immunities: List<String>
+)
+
+data class TypeAttackMatchup(
+    val attackingType: String,
+    /** Null means the cached type data cannot support a reliable calculation. */
+    val multiplier: Double?
 )
 
 /**
@@ -49,15 +61,74 @@ object TypeEffectivenessCalculator {
         var multiplier = 1.0
         for (defType in defendingTypes) {
             val relations = allTypes[defType] ?: continue
-            multiplier *= when (attackType) {
-                in relations.noDamageFrom -> 0.0
-                in relations.doubleDamageFrom -> 2.0
-                in relations.halfDamageFrom -> 0.5
-                else -> 1.0
-            }
+            multiplier *= againstDefendingType(attackType, relations)
         }
         return multiplier
     }
+
+    /** Returns null when the selected types or their cached damage relations are unavailable. */
+    fun multiplierOrNullFor(
+        attackType: String,
+        defendingTypes: List<String>,
+        allTypes: Map<String, TypeRelations>
+    ): Double? {
+        if (defendingTypes.isEmpty()) return null
+        val attackingType = allTypes[attackType] ?: return null
+        if (!attackingType.hasDamageRelationData()) return null
+
+        var multiplier = 1.0
+        for (defendingType in defendingTypes) {
+            val relations = allTypes[defendingType] ?: return null
+            if (!relations.hasDamageRelationData()) return null
+            multiplier *= againstDefendingType(attackType, relations)
+        }
+        return multiplier
+    }
+
+    /** Preserves one row for every attacking type, including types with unavailable data. */
+    fun attackMatchups(
+        attackingTypes: List<String>,
+        defendingTypes: List<String>,
+        allTypes: Map<String, TypeRelations>
+    ): List<TypeAttackMatchup> = attackingTypes.map { attackType ->
+        TypeAttackMatchup(
+            attackingType = attackType,
+            multiplier = multiplierOrNullFor(attackType, defendingTypes, allTypes)
+        )
+    }
+
+    /** Formats common Pokémon type multipliers without confusing them with member counts. */
+    fun formatMultiplier(multiplier: Double): String = when (multiplier) {
+        0.0 -> "0×"
+        0.25 -> "¼×"
+        0.5 -> "½×"
+        1.0 -> "1×"
+        else -> when {
+            multiplier >= 1.0 && multiplier % 1.0 == 0.0 -> "${multiplier.toLong()}×"
+            multiplier > 0.0 && (1.0 / multiplier) % 1.0 == 0.0 -> {
+                val denominator = (1.0 / multiplier).toLong()
+                when (denominator) {
+                    2L -> "½×"
+                    4L -> "¼×"
+                    8L -> "⅛×"
+                    else -> "1/${denominator}×"
+                }
+            }
+            else -> "${multiplier}×"
+        }
+    }
+
+    private fun againstDefendingType(attackType: String, relations: TypeRelations): Double = when (attackType) {
+        in relations.noDamageFrom -> 0.0
+        in relations.doubleDamageFrom -> 2.0
+        in relations.halfDamageFrom -> 0.5
+        else -> 1.0
+    }
+
+    private fun TypeRelations.hasDamageRelationData(): Boolean =
+        doubleDamageFrom.isNotEmpty() || doubleDamageTo.isNotEmpty() ||
+            halfDamageFrom.isNotEmpty() || halfDamageTo.isNotEmpty() ||
+            noDamageFrom.isNotEmpty() || noDamageTo.isNotEmpty()
 
     fun classify(multiplier: Double): Effectiveness = when {
         multiplier == 0.0 -> Effectiveness.IMMUNE
@@ -68,11 +139,11 @@ object TypeEffectivenessCalculator {
 
     /** Builds the full offensive + defensive matchup summary for a single type's detail screen. */
     fun singleTypeMatchups(type: TypeRelations): TypeMatchupSummary = TypeMatchupSummary(
-        superEffectiveAgainst = type.doubleDamageTo.sorted(),
-        notVeryEffectiveAgainst = type.halfDamageTo.sorted(),
-        noEffectAgainst = type.noDamageTo.sorted(),
-        weaknesses = type.doubleDamageFrom.sorted(),
-        resistances = type.halfDamageFrom.sorted(),
-        immunities = type.noDamageFrom.sorted()
+        superEffectiveAgainst = type.doubleDamageTo.filter(TypeBrowseability::isBrowseable).sorted(),
+        notVeryEffectiveAgainst = type.halfDamageTo.filter(TypeBrowseability::isBrowseable).sorted(),
+        noEffectAgainst = type.noDamageTo.filter(TypeBrowseability::isBrowseable).sorted(),
+        weaknesses = type.doubleDamageFrom.filter(TypeBrowseability::isBrowseable).sorted(),
+        resistances = type.halfDamageFrom.filter(TypeBrowseability::isBrowseable).sorted(),
+        immunities = type.noDamageFrom.filter(TypeBrowseability::isBrowseable).sorted()
     )
 }
