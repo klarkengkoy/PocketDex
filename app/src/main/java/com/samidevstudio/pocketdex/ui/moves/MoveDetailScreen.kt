@@ -13,7 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import com.samidevstudio.pocketdex.ui.components.PokedexScaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,7 +41,7 @@ fun MoveDetailScreen(
 
     val state by viewModel.detailUiState.collectAsStateWithLifecycle()
 
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+    PokedexScaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

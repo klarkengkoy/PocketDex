@@ -29,7 +29,8 @@ fun PokemonStatsCard(
     pokemon: PokemonDetailModel,
     displayName: String,
     sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    isSharedElementEnabled: Boolean
 ) {
     Box(
         modifier = Modifier
@@ -53,10 +54,14 @@ fun PokemonStatsCard(
                     text = "ID: #${pokemon.id.padStart(4, '0')}",
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
-                        .sharedElement(
-                            sharedContentState = rememberSharedContentState(key = "pokemon-id-${pokemon.id}"),
-                            animatedVisibilityScope = animatedVisibilityScope,
-                            boundsTransform = pokemonSpriteTransform()
+                        .then(
+                            if (isSharedElementEnabled) {
+                                Modifier.sharedElement(
+                                    sharedContentState = rememberSharedContentState(key = "pokemon-id-${pokemon.id}"),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    boundsTransform = pokemonSpriteTransform()
+                                )
+                            } else Modifier
                         )
                         .skipToLookaheadSize(),
                     fontFamily = FontFamily.Monospace,

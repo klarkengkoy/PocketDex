@@ -1,6 +1,7 @@
 package com.samidevstudio.pocketdex.ui.items
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,7 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import com.samidevstudio.pocketdex.ui.components.PokedexScaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 
 @Composable
 fun ItemDetailScreen(
@@ -43,7 +45,7 @@ fun ItemDetailScreen(
 
     val state by viewModel.detailUiState.collectAsStateWithLifecycle()
 
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+    PokedexScaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -82,11 +84,17 @@ fun ItemDetailScreen(
                     val item = current.item
 
                     if (item.spriteUrl != null) {
-                        AsyncImage(
-                            model = item.spriteUrl,
-                            contentDescription = item.name,
-                            modifier = Modifier.size(96.dp)
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = item.spriteUrl,
+                                contentDescription = item.name,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.size(96.dp)
+                            )
+                        }
                     }
 
                     ItemStatRow("Category", item.category.replace('-', ' ').replaceFirstChar { it.uppercase() })
