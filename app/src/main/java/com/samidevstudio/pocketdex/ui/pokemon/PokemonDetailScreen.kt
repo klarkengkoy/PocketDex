@@ -61,6 +61,7 @@ import com.samidevstudio.pocketdex.ui.navigation.POKEDEX_ANIM_MS
 import com.samidevstudio.pocketdex.ui.navigation.PokedexSettlingCurve
 import com.samidevstudio.pocketdex.ui.navigation.pokemonSpriteTransform
 import com.samidevstudio.pocketdex.ui.pokemon.components.EvolutionCarousel
+import com.samidevstudio.pocketdex.ui.pokemon.components.isSharedPokemonElementEligible
 import com.samidevstudio.pocketdex.ui.pokemon.components.PokemonDescriptionCard
 import com.samidevstudio.pocketdex.ui.pokemon.components.PokemonStatsCard
 import kotlinx.coroutines.delay
@@ -101,13 +102,10 @@ fun PokemonDetailScreen(
 ) {
     // Isolated state key ensures a clean UI reset when navigating to a different Pokémon from the list.
     key(pokemonId) {
-        DisposableEffect(pokemonId) {
-            viewModel.loadPokemonDetail(pokemonId)
-            onDispose {
-                // Clear state when leaving this Pokémon's detail view to prevent "ghost" data
-                // from leaking into the next Pokémon's screen.
-                viewModel.loadPokemonDetail(null)
-            }
+        val detailOwner = remember { Any() }
+        DisposableEffect(pokemonId, detailOwner) {
+            viewModel.loadPokemonDetail(pokemonId, detailOwner)
+            onDispose { viewModel.clearPokemonDetail(detailOwner) }
         }
 
         val stateValue by viewModel.detailUiState.collectAsStateWithLifecycle()
@@ -123,14 +121,6 @@ fun PokemonDetailScreen(
                 delay(50L)
                 onBack()
             }
-        }
-        
-        // PERFORMANCE: Disable shared element tracking after the initial flight to save CPU
-        // during carousel swipes.
-        var isTransitionFinished by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) {
-            delay(1000L)
-            isTransitionFinished = true
         }
         
         // Persist the last successful family tree to prevent the carousel from 
@@ -186,10 +176,20 @@ fun PokemonDetailScreen(
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier
                                 .weight(1f)
-                                .sharedElement(
-                                    sharedContentState = rememberSharedContentState(key = "pokemon-name-$currentDisplayId"),
-                                    animatedVisibilityScope = animatedVisibilityScope,
-                                    boundsTransform = pokemonSpriteTransform()
+                                .then(
+                                    if (isSharedPokemonElementEligible(
+                                            elementId = pokemonId,
+                                            originatingPokemonId = pokemonId,
+                                            currentPokemonId = currentDisplayId,
+                                            isBackingOut = isBackingOut
+                                        )
+                                    ) {
+                                        Modifier.sharedElement(
+                                            sharedContentState = rememberSharedContentState(key = "pokemon-name-$pokemonId"),
+                                            animatedVisibilityScope = animatedVisibilityScope,
+                                            boundsTransform = pokemonSpriteTransform()
+                                        )
+                                    } else Modifier
                                 )
                                 .skipToLookaheadSize()
                         )
@@ -270,7 +270,7 @@ fun PokemonDetailScreen(
                             branchParent?.let { selectedEvolutions[it.id] = id }
                             branchScrollDirection = if (forward) 1 else -1
                             currentSwipedId = id
-                            viewModel.loadPokemonDetail(id)
+                            viewModel.updatePokemonDetail(id, detailOwner)
                             viewModel.activePokemonId.value = id
                         }
 
@@ -283,11 +283,10 @@ fun PokemonDetailScreen(
                             sharedTransitionScope = sharedTransitionScope,
                             animatedVisibilityScope = animatedVisibilityScope,
                             isBackingOut = isBackingOut,
-                            isTransitionFinished = isTransitionFinished,
                             onBackingOutChange = { isBackingOut = it },
                             onPokemonChange = { id ->
                                 currentSwipedId = id
-                                viewModel.loadPokemonDetail(id)
+                                viewModel.updatePokemonDetail(id, detailOwner)
                                 viewModel.activePokemonId.value = id
                             },
                             canSwitchBranchVertically = branchChoices.size > 1,
@@ -319,10 +318,20 @@ fun PokemonDetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     modifier = Modifier
                                         .padding(bottom = 16.dp)
-                                        .sharedElement(
-                                            sharedContentState = rememberSharedContentState(key = "pokemon-types-$currentDisplayId"),
-                                            animatedVisibilityScope = animatedVisibilityScope,
-                                            boundsTransform = pokemonSpriteTransform()
+                                        .then(
+                                            if (isSharedPokemonElementEligible(
+                                                    elementId = pokemon.id,
+                                                    originatingPokemonId = pokemonId,
+                                                    currentPokemonId = currentDisplayId,
+                                                    isBackingOut = isBackingOut
+                                                )
+                                            ) {
+                                                Modifier.sharedElement(
+                                                    sharedContentState = rememberSharedContentState(key = "pokemon-types-${pokemon.id}"),
+                                                    animatedVisibilityScope = animatedVisibilityScope,
+                                                    boundsTransform = pokemonSpriteTransform()
+                                                )
+                                            } else Modifier
                                         )
                                 ) {
                                     pokemon.types.forEach { type ->
@@ -351,7 +360,13 @@ fun PokemonDetailScreen(
                                         pokemon = pokemon,
                                         displayName = pokemon.name.uppercase(),
                                         sharedTransitionScope = sharedTransitionScope,
-                                        animatedVisibilityScope = animatedVisibilityScope
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                        isSharedElementEnabled = isSharedPokemonElementEligible(
+                                            elementId = pokemon.id,
+                                            originatingPokemonId = pokemonId,
+                                            currentPokemonId = currentDisplayId,
+                                            isBackingOut = isBackingOut
+                                        )
                                     )
 
                                     if (pokemon.flavorText.isNotEmpty()) {

@@ -2,8 +2,10 @@ package com.samidevstudio.pocketdex.ui.pokemon
 
 import app.cash.turbine.test
 import com.samidevstudio.pocketdex.data.PokemonRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -203,6 +205,149 @@ class PokemonViewModelTest {
             // Should still be Loading since repo returned null (default)
             // But verify sync was called
             verify(repository).syncPokemonDetail(pokemonId)
+        }
+    }
+
+    @Test
+    fun `rapid selection ignores late detail emissions from the previous pokemon`() = runTest {
+        val olderId = "133"
+        val selectedId = "134"
+        val olderOwner = Any()
+        val selectedOwner = Any()
+        val olderFlow = MutableStateFlow<PokemonDetailModel?>(null)
+        val selectedFlow = MutableStateFlow<PokemonDetailModel?>(null)
+        val olderDetail = PokemonDetailModel(
+            id = olderId,
+            name = "eevee",
+            imageUrl = "",
+            types = listOf("Normal"),
+            height = 3,
+            weight = 65,
+            stats = emptyList(),
+            chainId = "1"
+        )
+        val selectedDetail = olderDetail.copy(id = selectedId, name = "vaporeon", chainId = "2")
+
+        whenever(repository.getPokemonDetailFlow(olderId)).thenReturn(olderFlow)
+        whenever(repository.getPokemonDetailFlow(selectedId)).thenReturn(selectedFlow)
+
+        viewModel.detailUiState.test {
+            assertEquals(PokemonDetailUiState.Loading, awaitItem())
+            viewModel.loadPokemonDetail(olderId, olderOwner)
+            viewModel.loadPokemonDetail(selectedId, selectedOwner)
+
+            selectedFlow.value = selectedDetail
+            assertEquals(selectedId, (awaitItem() as PokemonDetailUiState.Success).pokemon.id)
+
+            olderFlow.value = olderDetail
+            viewModel.clearPokemonDetail(olderOwner)
+            expectNoEvents()
+        }
+    }
+
+    @Test
+    fun `rapid same family reselection cancels stale sync and loads the last pokemon`() = runTest {
+        val firstId = "133"
+        val middleId = "134"
+        val firstFlow = MutableStateFlow<PokemonDetailModel?>(null)
+        val middleFlow = MutableStateFlow<PokemonDetailModel?>(null)
+        val firstDetail = PokemonDetailModel(
+            id = firstId,
+            name = "eevee",
+            imageUrl = "",
+            types = listOf("Normal"),
+            height = 3,
+            weight = 65,
+            stats = emptyList(),
+            chainId = "1"
+        )
+        val middleDetail = firstDetail.copy(id = middleId, name = "vaporeon")
+        val firstSyncStarted = CompletableDeferred<Unit>()
+        val inFlightIds = mutableSetOf<String>()
+        var firstSyncPending = true
+        var firstSyncCancelled = false
+
+        repository = object : PokemonRepository {
+            override fun getPokemonListFlow() = pokemonListFlow
+            override suspend fun fetchPokemonList(offset: Int, limit: Int) = Unit
+            override fun getPokemonDetailFlow(id: String) = when (id) {
+                firstId -> firstFlow
+                middleId -> middleFlow
+                else -> MutableStateFlow(null)
+            }
+            override fun getEvolutionChainFlow(chainId: String) = evolutionChainFlow
+            override suspend fun syncPokemonDetail(id: String) {
+                if (!inFlightIds.add(id)) return
+                try {
+                    if (id == firstId && firstSyncPending) {
+                        firstSyncPending = false
+                        firstSyncStarted.complete(Unit)
+                        try {
+                            awaitCancellation()
+                        } finally {
+                            firstSyncCancelled = true
+                        }
+                    }
+                    when (id) {
+                        firstId -> firstFlow.value = firstDetail
+                        middleId -> middleFlow.value = middleDetail
+                    }
+                } finally {
+                    inFlightIds.remove(id)
+                }
+            }
+            override suspend fun syncEvolutionChain(chainId: String) = Unit
+            override suspend fun backfillMissingTypes() = Unit
+        }
+        viewModel = PokemonViewModel(repository)
+
+        viewModel.detailUiState.test {
+            assertEquals(PokemonDetailUiState.Loading, awaitItem())
+            val owner = Any()
+            viewModel.loadPokemonDetail(firstId, owner)
+            assertTrue(firstSyncStarted.isCompleted)
+
+            viewModel.loadPokemonDetail(middleId, owner)
+            viewModel.loadPokemonDetail(firstId, owner)
+
+            assertTrue(firstSyncCancelled)
+            val finalState = viewModel.detailUiState.value as? PokemonDetailUiState.Success
+            assertEquals(firstId, finalState?.pokemon?.id)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `disposing outgoing detail owner does not clear incoming pokemon`() = runTest {
+        val outgoingId = "133"
+        val incomingId = "134"
+        val outgoingOwner = Any()
+        val incomingOwner = Any()
+        val outgoingDetail = PokemonDetailModel(
+            id = outgoingId,
+            name = "eevee",
+            imageUrl = "",
+            types = listOf("Normal"),
+            height = 3,
+            weight = 65,
+            stats = emptyList(),
+            chainId = "1"
+        )
+        val incomingDetail = outgoingDetail.copy(id = incomingId, name = "vaporeon")
+        whenever(repository.getPokemonDetailFlow(outgoingId)).thenReturn(kotlinx.coroutines.flow.flowOf(outgoingDetail))
+        whenever(repository.getPokemonDetailFlow(incomingId)).thenReturn(kotlinx.coroutines.flow.flowOf(incomingDetail))
+
+        viewModel.detailUiState.test {
+            assertEquals(PokemonDetailUiState.Loading, awaitItem())
+            viewModel.loadPokemonDetail(outgoingId, outgoingOwner)
+            assertEquals(outgoingId, (awaitItem() as PokemonDetailUiState.Success).pokemon.id)
+
+            viewModel.loadPokemonDetail(incomingId, incomingOwner)
+            assertEquals(incomingId, (awaitItem() as PokemonDetailUiState.Success).pokemon.id)
+
+            viewModel.updatePokemonDetail("135", outgoingOwner)
+            viewModel.clearPokemonDetail(outgoingOwner)
+            expectNoEvents()
         }
     }
 }

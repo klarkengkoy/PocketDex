@@ -5,6 +5,7 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,13 +15,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -37,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -109,11 +112,17 @@ fun PokemonScreen(
                             ) {
                                 PokemonListHeader(modifier = Modifier.weight(1f))
                                 Spacer(modifier = Modifier.width(64.dp))
-                                FloatingActionButton(
+                                val filterColor = if (activeTypeFilter.isEmpty()) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                }
+                                IconButton(
                                     onClick = { showFilterSheet = true },
-                                    modifier = Modifier.align(Alignment.Bottom),
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    modifier = Modifier
+                                        .align(Alignment.Bottom)
+                                        .size(56.dp)
+                                        .border(2.dp, filterColor, RectangleShape)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.FilterList,
@@ -121,7 +130,8 @@ fun PokemonScreen(
                                             "Open Type Filter"
                                         } else {
                                             "Open Type Filter, ${activeTypeFilter.size} active"
-                                        }
+                                        },
+                                        tint = filterColor
                                     )
                                 }
                             }

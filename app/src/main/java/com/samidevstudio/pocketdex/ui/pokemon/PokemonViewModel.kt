@@ -6,6 +6,7 @@ import com.samidevstudio.pocketdex.data.PokemonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +16,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 private const val PAGE_SIZE = 60
@@ -75,6 +78,10 @@ class PokemonViewModel @Inject constructor(
         )
 
     private val _currentPokemonId = MutableStateFlow<String?>(null)
+    private var detailOwner: Any? = null
+    private val selectedDetailSyncMutex = Mutex()
+    private var selectedDetailSyncJob: Job? = null
+    private var selectedDetailSyncId: String? = null
 
     /**
      * The ID of the Pokémon currently being focused for shared element transitions.
@@ -107,16 +114,38 @@ class PokemonViewModel @Inject constructor(
             initialValue = PokemonDetailUiState.Loading
         )
 
-    fun loadPokemonDetail(id: String?) {
+    fun loadPokemonDetail(id: String?, owner: Any? = null) {
+        detailOwner = owner
+        setPokemonDetail(id)
+    }
+
+    fun updatePokemonDetail(id: String, owner: Any) {
+        if (detailOwner === owner) setPokemonDetail(id)
+    }
+
+    private fun setPokemonDetail(id: String?) {
         _currentPokemonId.value = id
         _detailError.value = null
-        id?.let(::syncPokemonDetail)
+        if (id == null) {
+            selectedDetailSyncJob?.cancel()
+            selectedDetailSyncJob = null
+            selectedDetailSyncId = null
+        } else {
+            syncSelectedPokemonDetail(id)
+        }
+    }
+
+    fun clearPokemonDetail(owner: Any) {
+        if (detailOwner === owner) {
+            detailOwner = null
+            setPokemonDetail(null)
+        }
     }
 
     fun retryPokemonDetail() {
         _currentPokemonId.value?.let { id ->
             _detailError.value = null
-            syncPokemonDetail(id)
+            syncSelectedPokemonDetail(id, force = true)
         }
     }
 
@@ -124,16 +153,30 @@ class PokemonViewModel @Inject constructor(
         syncPokemonDetail(id)
     }
 
+    private fun syncSelectedPokemonDetail(id: String, force: Boolean = false) {
+        if (!force && selectedDetailSyncId == id && selectedDetailSyncJob?.isActive == true) return
+
+        selectedDetailSyncJob?.cancel()
+        selectedDetailSyncId = id
+        selectedDetailSyncJob = viewModelScope.launch {
+            selectedDetailSyncMutex.withLock {
+                if (_currentPokemonId.value == id) syncPokemonDetailRequest(id)
+            }
+        }
+    }
+
     private fun syncPokemonDetail(id: String) {
-        viewModelScope.launch {
-            try {
-                repository.syncPokemonDetail(id)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                if (_currentPokemonId.value == id) {
-                    _detailError.value = id to (e.message ?: "Could not load Pokémon details")
-                }
+        viewModelScope.launch { syncPokemonDetailRequest(id) }
+    }
+
+    private suspend fun syncPokemonDetailRequest(id: String) {
+        try {
+            repository.syncPokemonDetail(id)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (_currentPokemonId.value == id) {
+                _detailError.value = id to (e.message ?: "Could not load Pokémon details")
             }
         }
     }

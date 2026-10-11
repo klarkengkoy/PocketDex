@@ -49,6 +49,13 @@ import com.samidevstudio.pocketdex.ui.pokemon.EvolutionNode
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.absoluteValue
 
+internal fun isSharedPokemonElementEligible(
+    elementId: String,
+    originatingPokemonId: String,
+    currentPokemonId: String,
+    isBackingOut: Boolean
+): Boolean = elementId == if (isBackingOut) currentPokemonId else originatingPokemonId
+
 @Composable
 fun EvolutionCarousel(
     evolutions: List<EvolutionNode>,
@@ -59,7 +66,6 @@ fun EvolutionCarousel(
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
     isBackingOut: Boolean,
-    isTransitionFinished: Boolean,
     onBackingOutChange: (Boolean) -> Unit,
     onPokemonChange: (String) -> Unit,
     canSwitchBranchVertically: Boolean,
@@ -187,7 +193,13 @@ fun EvolutionCarousel(
                                     .size(240.dp)
                                     .padding(16.dp)
                                     .then(
-                                        if (animatedNode.id == currentDisplayId && (!isTransitionFinished || isBackingOut)) {
+                                        if (isSharedPokemonElementEligible(
+                                                elementId = animatedNode.id,
+                                                originatingPokemonId = pokemonId,
+                                                currentPokemonId = currentDisplayId,
+                                                isBackingOut = isBackingOut
+                                            )
+                                        ) {
                                             Modifier.sharedElement(
                                                 sharedContentState = rememberSharedContentState(key = "pokemon-image-${animatedNode.id}"),
                                                 animatedVisibilityScope = animatedVisibilityScope,

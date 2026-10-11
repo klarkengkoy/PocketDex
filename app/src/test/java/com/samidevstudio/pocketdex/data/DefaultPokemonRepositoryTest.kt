@@ -332,6 +332,14 @@ class DefaultPokemonRepositoryTest {
         override suspend fun getTypeDetail(id: String): TypeDetail = throw NotImplementedError()
         override suspend fun getItemList(limit: Int, offset: Int): ItemListResponse = throw NotImplementedError()
         override suspend fun getItemDetail(id: String): ItemDetail = throw NotImplementedError()
+        override suspend fun getAbilityList(limit: Int, offset: Int): AbilityListResponse = throw NotImplementedError()
+        override suspend fun getAbilityDetail(id: String): AbilityDetail = throw NotImplementedError()
+        override suspend fun getBerryList(limit: Int, offset: Int): BerryListResponse = throw NotImplementedError()
+        override suspend fun getBerryDetail(id: String): BerryDetail = throw NotImplementedError()
+        override suspend fun getRegionList(limit: Int, offset: Int): RegionListResponse = throw NotImplementedError()
+        override suspend fun getRegionDetail(id: String): RegionDetail = throw NotImplementedError()
+        override suspend fun getLocationList(limit: Int, offset: Int): LocationListResponse = throw NotImplementedError()
+        override suspend fun getLocationDetail(id: String): LocationDetail = throw NotImplementedError()
     }
 
     private class EmptyPokemonListService : PokeApiService {
@@ -348,6 +356,14 @@ class DefaultPokemonRepositoryTest {
         override suspend fun getTypeDetail(id: String): TypeDetail = throw NotImplementedError()
         override suspend fun getItemList(limit: Int, offset: Int): ItemListResponse = throw NotImplementedError()
         override suspend fun getItemDetail(id: String): ItemDetail = throw NotImplementedError()
+        override suspend fun getAbilityList(limit: Int, offset: Int): AbilityListResponse = throw NotImplementedError()
+        override suspend fun getAbilityDetail(id: String): AbilityDetail = throw NotImplementedError()
+        override suspend fun getBerryList(limit: Int, offset: Int): BerryListResponse = throw NotImplementedError()
+        override suspend fun getBerryDetail(id: String): BerryDetail = throw NotImplementedError()
+        override suspend fun getRegionList(limit: Int, offset: Int): RegionListResponse = throw NotImplementedError()
+        override suspend fun getRegionDetail(id: String): RegionDetail = throw NotImplementedError()
+        override suspend fun getLocationList(limit: Int, offset: Int): LocationListResponse = throw NotImplementedError()
+        override suspend fun getLocationDetail(id: String): LocationDetail = throw NotImplementedError()
     }
 
     private class CountingPokemonDao : PokemonDao {

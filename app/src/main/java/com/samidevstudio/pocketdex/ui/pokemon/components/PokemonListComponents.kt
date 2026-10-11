@@ -4,12 +4,15 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -161,10 +164,7 @@ fun MorphingSearchBar(
     interactionSource: MutableInteractionSource,
     modifier: Modifier = Modifier
 ) {
-    val widthPercent by animateDpAsState(
-        targetValue = if (isExpanded) 240.dp else 56.dp,
-        label = "WidthAnimation"
-    )
+    val isFocused by interactionSource.collectIsFocusedAsState()
     var textFieldValue by remember { mutableStateOf(TextFieldValue(query)) }
 
     LaunchedEffect(query) {
@@ -182,21 +182,37 @@ fun MorphingSearchBar(
         }
     }
 
-    Surface(
-        color = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-        shape = CircleShape,
-        modifier = modifier
-            .width(widthPercent)
-            .height(64.dp)
-            .animateContentSize()
-            .clickable(
-                enabled = !isExpanded,
-                onClick = onToggle
-            ),
-        tonalElevation = 4.dp,
-        shadowElevation = 6.dp
-    ) {
+    BoxWithConstraints(modifier = modifier) {
+        val searchWidth by animateDpAsState(
+            targetValue = if (isExpanded) {
+                minOf(240.dp, (maxWidth - 64.dp).coerceAtLeast(56.dp))
+            } else {
+                56.dp
+            },
+            label = "WidthAnimation"
+        )
+        val outlineColor = if (isExpanded && isFocused) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
+
+        Surface(
+            color = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shape = CircleShape,
+            border = BorderStroke(2.dp, outlineColor),
+            modifier = Modifier
+                .width(searchWidth)
+                .height(64.dp)
+                .animateContentSize()
+                .clickable(
+                    enabled = !isExpanded,
+                    onClick = onToggle
+                ),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp
+        ) {
         if (!isExpanded) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 Icon(
@@ -216,7 +232,7 @@ fun MorphingSearchBar(
                     modifier = Modifier
                         .padding(start = 16.dp)
                         .size(24.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
                 
                 TextField(
@@ -230,7 +246,7 @@ fun MorphingSearchBar(
                             text = "Search Dex...",
                             fontFamily = FontFamily.Monospace,
                             fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                     },
                     modifier = Modifier
@@ -253,9 +269,9 @@ fun MorphingSearchBar(
                         unfocusedContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = MaterialTheme.colorScheme.onPrimary,
-                        focusedTextColor = MaterialTheme.colorScheme.onPrimary,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onPrimary
+                        cursorColor = MaterialTheme.colorScheme.onSurface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     interactionSource = interactionSource,
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -276,6 +292,7 @@ fun MorphingSearchBar(
                 }
             }
         }
+    }
     }
 }
 
