@@ -31,13 +31,14 @@ object TeamAnalyzer {
         members: List<TeamMemberTypes>,
         allTypes: Map<String, TypeRelations>
     ): TeamAnalysis {
-        if (members.isEmpty() || allTypes.isEmpty()) {
+        val attackTypes = allTypes.keys.filter(TypeBrowseability::isBrowseable)
+        if (members.isEmpty() || attackTypes.isEmpty()) {
             return TeamAnalysis(
                 typeComposition = emptyMap(),
                 sharedWeaknesses = emptyList(),
                 sharedResistances = emptyList(),
                 sharedImmunities = emptyList(),
-                coverageGaps = allTypes.keys.sorted()
+                coverageGaps = attackTypes.sorted()
             )
         }
 
@@ -48,7 +49,6 @@ object TeamAnalyzer {
             .eachCount()
 
         // For every attacking type, count how many team members are weak/resistant/immune to it.
-        val attackTypes = allTypes.keys
         val weakCounts = mutableMapOf<String, Int>()
         val resistantTypes = mutableListOf<String>()
         val immuneTypes = mutableListOf<String>()
@@ -70,8 +70,8 @@ object TeamAnalyzer {
             if (anyImmune) immuneTypes.add(attackType)
             if (allResistOrImmune) resistantTypes.add(attackType)
 
-            // Coverage: does any team member's own type learnset threaten this attacking type
-            // offensively? We approximate coverage using each member's own types as their move pool.
+            // Type-based coverage: checks if any team member's innate types deal super-effective
+            // damage against target types (STAB type coverage).
             for (member in members) {
                 for (memberType in member.types) {
                     val relations = allTypes[memberType] ?: continue

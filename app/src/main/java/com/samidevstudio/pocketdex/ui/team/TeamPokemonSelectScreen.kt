@@ -46,6 +46,7 @@ import com.samidevstudio.pocketdex.ui.theme.retroBorder
 fun TeamPokemonSelectScreen(
     pokemonViewModel: PokemonViewModel,
     replacePosition: Int?,
+    compareSlot: Int? = null,
     onSelect: (PokemonUiModel) -> Unit,
     onBack: () -> Unit
 ) {
@@ -59,7 +60,11 @@ fun TeamPokemonSelectScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = if (replacePosition != null) "REPLACE POKÉMON" else "ADD POKÉMON",
+            text = when {
+                compareSlot != null -> "SELECT COMPARISON POKÉMON"
+                replacePosition != null -> "REPLACE POKÉMON"
+                else -> "ADD POKÉMON"
+            },
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 22.sp,
