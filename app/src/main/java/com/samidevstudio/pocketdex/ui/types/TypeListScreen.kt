@@ -103,7 +103,7 @@ fun TypeListScreen(
                     TextButton(onClick = viewModel::retrySync) { Text("RETRY") }
                 } else {
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
+                        columns = GridCells.Adaptive(minSize = 150.dp),
                         contentPadding = PaddingValues(bottom = 180.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
