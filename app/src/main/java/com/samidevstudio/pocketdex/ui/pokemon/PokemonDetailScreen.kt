@@ -42,6 +42,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -131,7 +132,7 @@ fun PokemonDetailScreen(
         // from blinking or emptying during loading states.
         var displayPokemon by remember { mutableStateOf<PokemonDetailModel?>(null) }
         val selectedEvolutions = remember(displayPokemon?.chainId) { mutableStateMapOf<String, String>() }
-        var branchScrollDirection by remember { mutableStateOf(1) }
+        var branchScrollDirection by remember { mutableIntStateOf(1) }
         var currentSwipedId by remember(pokemonId) { mutableStateOf(pokemonId) }
         
         LaunchedEffect(state) {

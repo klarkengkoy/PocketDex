@@ -1,6 +1,5 @@
 package com.samidevstudio.pocketdex.ui
 
-import android.content.res.Configuration
 import androidx.compose.foundation.Indication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -34,7 +33,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -54,8 +52,6 @@ fun PocketDexApp() {
     val currentRoute = backStack.lastOrNull()
     val isDarkTheme = isSystemInDarkTheme()
     val retroIndication = rememberRetroIndication()
-    
-    val configuration = LocalConfiguration.current
     
     // Adaptive Sizes
     val barHeight = 56.dp
