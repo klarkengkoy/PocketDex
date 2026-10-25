@@ -2,6 +2,10 @@
 
 PocketDex is a retro-styled Pokémon encyclopedia for Android. It uses PokéAPI and a Game Boy-inspired interface to browse Pokémon, moves, items, and Explore resources, and to build and compare teams in Team Lab.
 
+<p align="center">
+  <a href="https://klarkengkoy.github.io/klarkengkoy/#pocketdex-title"><img src="assets/showcase-button.svg" alt="View PocketDex Showcase" width="300" height="56" /></a>
+</p>
+
 ## Features
 
 - Five unified bottom navigation destinations: Explore, Moves, central Poké Ball (Pokémon), Items, and Team Lab.
