@@ -152,3 +152,19 @@ fun RetroStatBar(name: String, value: Int) {
         )
     }
 }
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun DetailTypeBadgePreview() {
+    com.samidevstudio.pocketdex.ui.theme.PocketDexTheme {
+        DetailTypeBadge(type = "fire")
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun RetroStatBarPreview() {
+    com.samidevstudio.pocketdex.ui.theme.PocketDexTheme {
+        RetroStatBar(name = "HP", value = 100)
+    }
+}

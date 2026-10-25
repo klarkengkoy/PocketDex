@@ -1,6 +1,7 @@
 package com.samidevstudio.pocketdex.ui.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -68,6 +69,28 @@ fun PokeballCanvas(modifier: Modifier = Modifier, isRouteActive: Boolean) {
             color = if (isRouteActive) pokedexRed else Color.White,
             radius = radius * 0.15f,
             center = center
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun PokeballCanvasActivePreview() {
+    com.samidevstudio.pocketdex.ui.theme.PocketDexTheme {
+        PokeballCanvas(
+            modifier = Modifier.size(64.dp),
+            isRouteActive = true
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun PokeballCanvasInactivePreview() {
+    com.samidevstudio.pocketdex.ui.theme.PocketDexTheme {
+        PokeballCanvas(
+            modifier = Modifier.size(64.dp),
+            isRouteActive = false
         )
     }
 }

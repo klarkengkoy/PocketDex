@@ -76,3 +76,19 @@ fun ExploreDetailHeader(
         )
     }
 }
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun PocketDexHeaderPreview() {
+    com.samidevstudio.pocketdex.ui.theme.PocketDexTheme {
+        PocketDexHeader(text = "POKEMON")
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+private fun ExploreDetailHeaderPreview() {
+    com.samidevstudio.pocketdex.ui.theme.PocketDexTheme {
+        ExploreDetailHeader(title = "ELECTRIC TYPE", onBack = {})
+    }
+}
