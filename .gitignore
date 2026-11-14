@@ -22,5 +22,5 @@ local.properties
 docs/
 notes/
 
-# Keep local Copilot instructions untracked
-.github/
+# Keep local Copilot instructions untracked, but track GitHub Actions workflows
+.github/copilot-instructions.md
